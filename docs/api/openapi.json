@@ -1,0 +1,112 @@
+{
+  "openapi": "3.0.3",
+  "info": {
+    "title": "MediConnect API",
+    "version": "0.1.0",
+    "description": "API MVP para plataforma health-tech multirol."
+  },
+  "servers": [
+    {
+      "url": "http://localhost:3000/api/v1"
+    }
+  ],
+  "paths": {
+    "/auth/login": {
+      "post": {
+        "summary": "Iniciar sesión",
+        "tags": ["Auth"]
+      }
+    },
+    "/auth/register": {
+      "post": {
+        "summary": "Registrar usuario con perfil por rol",
+        "tags": ["Auth"]
+      }
+    },
+    "/profiles/me": {
+      "get": {
+        "summary": "Obtener perfil autenticado",
+        "tags": ["Profiles"],
+        "security": [{ "bearerAuth": [] }]
+      },
+      "patch": {
+        "summary": "Actualizar perfil autenticado",
+        "tags": ["Profiles"],
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/doctors": {
+      "get": {
+        "summary": "Buscar médicos activos con paginación",
+        "tags": ["Doctors"]
+      }
+    },
+    "/doctors/{doctorId}/availability": {
+      "get": {
+        "summary": "Consultar disponibilidad y slots de un médico",
+        "tags": ["Availability"]
+      }
+    },
+    "/availability/me": {
+      "get": {
+        "summary": "Listar disponibilidad del médico autenticado",
+        "tags": ["Availability"],
+        "security": [{ "bearerAuth": [] }]
+      },
+      "post": {
+        "summary": "Crear disponibilidad del médico autenticado",
+        "tags": ["Availability"],
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/appointments": {
+      "get": {
+        "summary": "Listar citas según rol autenticado con paginación",
+        "tags": ["Appointments"],
+        "security": [{ "bearerAuth": [] }]
+      },
+      "post": {
+        "summary": "Crear cita usando slot disponible",
+        "tags": ["Appointments"],
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/clinical/appointments/{appointmentId}/notes": {
+      "post": {
+        "summary": "Crear nota clínica",
+        "tags": ["Clinical"],
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/clinical/appointments/{appointmentId}/prescriptions": {
+      "post": {
+        "summary": "Crear receta",
+        "tags": ["Clinical"],
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/payments/appointments/{appointmentId}/dummy": {
+      "post": {
+        "summary": "Crear pago dummy transaccional",
+        "tags": ["Payments"],
+        "security": [{ "bearerAuth": [] }]
+      }
+    },
+    "/users": {
+      "get": {
+        "summary": "Listar usuarios con paginación",
+        "tags": ["Users"],
+        "security": [{ "bearerAuth": [] }]
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

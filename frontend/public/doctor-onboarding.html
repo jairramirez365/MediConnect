@@ -1,0 +1,191 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MediConnect - Onboarding médico</title>
+    <style>
+      body {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        background: linear-gradient(135deg, #edf7f2, #f8fbff);
+        color: #102027;
+      }
+
+      main {
+        width: min(960px, calc(100% - 32px));
+        margin: 36px auto;
+        display: grid;
+        gap: 20px;
+      }
+
+      section {
+        border: 1px solid #d7e2e8;
+        border-radius: 18px;
+        padding: 20px;
+        background: white;
+      }
+
+      form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 12px;
+      }
+
+      input,
+      button,
+      textarea {
+        border: 1px solid #d7e2e8;
+        border-radius: 10px;
+        padding: 10px 12px;
+        font: inherit;
+      }
+
+      button {
+        background: #0d7c66;
+        border: 0;
+        color: white;
+        cursor: pointer;
+        font-weight: 700;
+      }
+
+      pre {
+        overflow: auto;
+        border-radius: 14px;
+        padding: 14px;
+        background: #102027;
+        color: #e8fff8;
+      }
+
+      .full {
+        grid-column: 1 / -1;
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Onboarding médico</h1>
+        <p>Prueba temporal para cargar documentos médicos y aprobarlos como administrador.</p>
+      </header>
+
+      <section>
+        <h2>1. Login médico</h2>
+        <form id="doctorLoginForm">
+          <input name="email" placeholder="Correo médico" required />
+          <input name="password" type="password" placeholder="Contraseña" required value="Doctor123!" />
+          <button class="full">Ingresar como médico</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>2. Cargar documento médico</h2>
+        <form id="documentForm">
+          <input name="documentType" required value="licencia_medica" />
+          <input name="fileName" required value="licencia-medica.pdf" />
+          <input class="full" name="fileUrl" required value="https://storage.local/licencia-medica.pdf" />
+          <button class="full">Cargar documento</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>3. Login administrador</h2>
+        <form id="adminLoginForm">
+          <input name="email" required value="admin@mediconnect.local" />
+          <input name="password" type="password" required value="Admin123!" />
+          <button class="full">Ingresar como admin</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>4. Revisar y aprobar</h2>
+        <form id="approvalForm">
+          <input name="doctorId" placeholder="Doctor ID" required />
+          <input name="documentId" placeholder="Documento ID" required />
+          <textarea class="full" name="reviewObservation">Documento aprobado desde prueba local.</textarea>
+          <button type="button" id="reviewButton">Aprobar documento</button>
+          <button type="button" id="approveButton">Activar médico</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>Respuesta</h2>
+        <pre id="output">Usa los formularios en orden.</pre>
+      </section>
+    </main>
+
+    <script>
+      let doctorToken = "";
+      let adminToken = "";
+      const output = document.querySelector("#output");
+
+      function print(label, value) {
+        output.textContent = JSON.stringify({ label, value }, null, 2);
+      }
+
+      async function postJson(url, body, token) {
+        const response = await fetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(token ? { Authorization: `Bearer ${token}` } : {})
+          },
+          body: JSON.stringify(body)
+        });
+
+        return { status: response.status, body: await response.json() };
+      }
+
+      async function patchJson(url, body, token) {
+        const response = await fetch(url, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`
+          },
+          body: JSON.stringify(body)
+        });
+
+        return { status: response.status, body: await response.json() };
+      }
+
+      document.querySelector("#doctorLoginForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const data = Object.fromEntries(new FormData(event.target));
+        const result = await postJson("/api/v1/auth/login", data);
+        doctorToken = result.body.data?.accessToken || "";
+        print("doctor-login", result);
+      });
+
+      document.querySelector("#documentForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const data = Object.fromEntries(new FormData(event.target));
+        const result = await postJson("/api/v1/doctors/me/documents", data, doctorToken);
+        print("document-upload", result);
+      });
+
+      document.querySelector("#adminLoginForm").addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const data = Object.fromEntries(new FormData(event.target));
+        const result = await postJson("/api/v1/auth/login", data);
+        adminToken = result.body.data?.accessToken || "";
+        print("admin-login", result);
+      });
+
+      document.querySelector("#reviewButton").addEventListener("click", async () => {
+        const data = Object.fromEntries(new FormData(document.querySelector("#approvalForm")));
+        const result = await patchJson(`/api/v1/doctors/${data.doctorId}/documents/${data.documentId}/review`, {
+          reviewStatus: "aprobado",
+          reviewObservation: data.reviewObservation
+        }, adminToken);
+        print("document-review", result);
+      });
+
+      document.querySelector("#approveButton").addEventListener("click", async () => {
+        const data = Object.fromEntries(new FormData(document.querySelector("#approvalForm")));
+        const result = await patchJson(`/api/v1/doctors/${data.doctorId}/approve`, {}, adminToken);
+        print("doctor-approval", result);
+      });
+    </script>
+  </body>
+</html>

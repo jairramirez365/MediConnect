@@ -1,0 +1,30 @@
+Este block de notas funcionara como vitacora del proyecto en ella se consignaran las ideas, tareas y tiempos empleados en el proyecto.  
+
+Fase 1: definicion del MVP
+Actúa como arquitecto de software senior y diseñador de bases de datos para una plataforma health-tech multirol.
+
+Necesito definir el modelo de dominio MVP para una aplicación web con estos roles:
+- médico
+- paciente
+- comisionista
+- administrador
+
+Objetivo del MVP:
+- registro y autenticación
+- perfiles por rol
+- búsqueda de médicos
+- agenda y disponibilidad
+- agendamiento de citas
+- gestión de citas
+- acceso básico a historia clínica
+- recetas simples
+- pagos básicos
+- calificación posterior a consulta
+
+Tarea:
+1. Identifica las entidades principales del dominio.
+2. Define atributos clave por entidad.
+3. Define relaciones entre entidades.
+4. Propón estados de negocio para citas, pagos y comisiones.
+5. Separa claramente lo que pertenece al MVP y lo que debe quedar fuera para una fase 2.
+6. Entrega el resultado en formato estructurado y técnico.

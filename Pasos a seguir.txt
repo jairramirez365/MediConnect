@@ -1,0 +1,36 @@
+ Implementar CRUD de disponibilidad médica.
+ Implementar endpoint GET /doctors/:id/availability.
+ Implementar cálculo real de slots disponibles.
+ Implementar CRUD de especialidades y asignación a médico.
+ Endurecer creación de cita para usar solo slots disponibles.
+ Implementar máquina de estados de cita con transiciones válidas.
+ Implementar historia clínica: crear nota, listar historia del paciente, permisos por médico/paciente.
+ Implementar recetas: crear receta, agregar items, consultar por paciente.
+ Implementar pago básico dummy transaccional.
+ Implementar generación de comisión después de pago exitoso.
+ Implementar movimientos de saldo por comisión/devolución.
+ Agregar auditoría a aprobación médica, citas, historia, recetas y pagos.
+Importante:
+
+ Agregar edición de perfil paciente.
+ Agregar edición de perfil médico.
+ Agregar bloqueo/desbloqueo de usuarios por admin.
+ Agregar paginación en médicos, citas y usuarios.
+ Agregar validación más estricta de body/query params.
+ Agregar CORS configurado por ambiente.
+ Agregar rate limit a login/register.
+ Agregar headers de seguridad.
+ Agregar OpenAPI o colección Postman.
+ Separar tests por módulo.
+ Normalizar formato de respuestas y errores.
+ Corregir encoding de seeds/documentación.
+Deseable:
+
+ Implementar refresh token.
+ Implementar recuperación de contraseña.
+ Implementar verificación de correo.
+ Implementar upload real a storage cloud.
+ Implementar jobs para notificaciones.
+ Implementar dashboard admin.
+ Implementar métricas/logging estructurado avanzado.
+cuando se cree un usuario nuevo que entre de una vez a la pantalla de mi perfil, para que coloque los otros campos necesarios

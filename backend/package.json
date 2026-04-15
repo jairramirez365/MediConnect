@@ -1,0 +1,23 @@
+{
+  "name": "mediconnect-backend",
+  "version": "1.0.0",
+  "description": "Backend base para MediConnect",
+  "main": "src/server.js",
+  "type": "commonjs",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "scripts": {
+    "dev": "node --watch src/server.js",
+    "start": "node src/server.js",
+    "test": "node tests/auth-and-doctors.test.js",
+    "db:init": "node scripts/run-sql.js ../../database/schemas/init.sql",
+    "db:seed": "node scripts/run-sql.js ../../database/seeders/seeds.sql",
+    "db:bootstrap": "node scripts/run-sql.js ../../database/schemas/init.sql && node scripts/run-sql.js ../../database/seeders/seeds.sql"
+  },
+  "dependencies": {
+    "dotenv": "^16.6.1",
+    "express": "^4.21.2",
+    "pg": "^8.16.3"
+  }
+}
