@@ -1,152 +1,192 @@
-import { Calendar, Users, DollarSign, Star, Clock, Video } from 'lucide-react';
-import { StatCard } from '../components/StatCard';
-import { appointments, patients, doctors, getAppointmentsByDoctorId, getPatientById } from '../data/mockData';
+import { Calendar, ChevronRight, ClipboardList, Clock3, FileText, ShieldCheck, Sparkles, Stethoscope, UserCircle, Users } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { api } from '../../services/api';
+import { EmptyState, ErrorState, LoadingState } from '../components/AsyncState';
+import { StatusBadge } from '../components/StatusBadge';
 
-export function DoctorDashboard() {
-  const currentDoctor = doctors[0]; // Dr. Carlos Ramírez
-  const doctorAppointments = getAppointmentsByDoctorId(currentDoctor.id);
-  const todayAppointments = doctorAppointments.filter(a => a.date === '2026-03-26');
-  const upcomingAppointments = doctorAppointments.filter(a => a.status !== 'completed' && a.status !== 'cancelled');
+export function DoctorDashboard({
+  onGoToSchedule,
+  onGoToAppointments,
+  onGoToProfile
+}: {
+  onGoToSchedule: () => void;
+  onGoToAppointments: () => void;
+  onGoToProfile: () => void;
+}) {
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    async function loadAppointments() {
+      try {
+        const response = await api.appointments({ limit: 12 });
+        setAppointments(response.data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'No fue posible cargar tu inicio medico.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadAppointments();
+  }, []);
+
+  const todayAppointments = useMemo(() => {
+    const today = new Date().toISOString().slice(0, 10);
+    return appointments.filter((appointment) => appointment.scheduledStartAt?.slice(0, 10) === today);
+  }, [appointments]);
+
+  const pendingAppointments = useMemo(
+    () => appointments.filter((appointment) => ['pendiente_confirmacion', 'confirmada'].includes(appointment.status)),
+    [appointments]
+  );
+
+  const completedAppointments = useMemo(
+    () => appointments.filter((appointment) => appointment.status === 'completada'),
+    [appointments]
+  );
+
+  if (isLoading) return <LoadingState label="Cargando tu inicio medico..." />;
+  if (error) return <ErrorState message={error} />;
 
   return (
     <div className="space-y-6">
-      {/* Stats Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Citas Hoy"
-          value={todayAppointments.length}
-          icon={Calendar}
-          color="blue"
-        />
-        <StatCard
-          title="Pacientes Activos"
-          value={currentDoctor.patientsCount}
-          icon={Users}
-          color="green"
-        />
-        <StatCard
-          title="Calificación"
-          value={currentDoctor.rating}
-          icon={Star}
-          color="orange"
-          trend={{ value: `${currentDoctor.reviewCount} reseñas`, isPositive: true }}
-        />
-        <StatCard
-          title="Ingresos del Mes"
-          value={`€${currentDoctor.monthlyIncome.toLocaleString()}`}
-          icon={DollarSign}
-          color="purple"
-          trend={{ value: '+12.5%', isPositive: true }}
-        />
-      </div>
-
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Today's Appointments */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Citas de Hoy</h3>
-            <span className="text-sm text-gray-500">{todayAppointments.length} citas</span>
+      <section className="rounded-[32px] border border-white/80 bg-[linear-gradient(135deg,_#0f4fcf_0%,_#60a5fa_60%,_#dbeafe_100%)] p-6 text-white shadow-[0_28px_80px_rgba(37,99,235,0.18)] md:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1fr_0.95fr] lg:items-end">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/16 px-4 py-2 text-sm font-semibold text-white/95">
+              <ShieldCheck className="h-4 w-4" />
+              Tu jornada medica, mas clara
+            </div>
+            <h1 className="mt-5 text-4xl font-black tracking-[-0.05em] md:text-5xl">Inicio medico</h1>
+            <p className="mt-4 max-w-2xl text-base leading-8 text-blue-50 md:text-lg">
+              Revisa tu agenda, confirma consultas y mantente cerca de cada paciente con una vista simple y accionable.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <ActionChip title="Ver agenda" icon={Calendar} onClick={onGoToSchedule} />
+              <ActionChip title="Gestionar citas" icon={ClipboardList} onClick={onGoToAppointments} />
+              <ActionChip title="Completar perfil" icon={UserCircle} onClick={onGoToProfile} />
+            </div>
           </div>
-          <div className="space-y-3">
-            {todayAppointments.length > 0 ? (
-              todayAppointments.map(apt => {
-                const patient = getPatientById(apt.patientId);
-                return (
-                  <div key={apt.id} className="flex items-center gap-4 p-4 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors">
-                    <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                      {patient?.name.charAt(0)}
-                    </div>
-                    <div className="flex-1">
-                      <p className="font-medium text-gray-900">{patient?.name}</p>
-                      <p className="text-sm text-gray-600">{apt.reason}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-medium text-blue-600">{apt.time}</p>
-                      <div className="flex items-center gap-1 text-xs text-gray-500 mt-1">
-                        {apt.type === 'teleconsulta' ? (
-                          <>
-                            <Video className="w-3 h-3" />
-                            <span>Virtual</span>
-                          </>
-                        ) : (
-                          <span>Presencial</span>
-                        )}
+          <div className="grid gap-4 sm:grid-cols-2">
+            <HeroMiniCard title="Citas de hoy" value={todayAppointments.length} icon={Calendar} />
+            <HeroMiniCard title="Pendientes" value={pendingAppointments.length} icon={Clock3} />
+            <HeroMiniCard title="Completadas" value={completedAppointments.length} icon={FileText} />
+            <HeroMiniCard title="Seguimiento" value="Activo" icon={Sparkles} />
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-3">
+            <MetricCard title="Citas hoy" value={todayAppointments.length} subtitle="Jornada actual" icon={Calendar} />
+            <MetricCard title="Consultas pendientes" value={pendingAppointments.length} subtitle="Por confirmar o atender" icon={ClipboardList} />
+            <MetricCard title="Pacientes atendidos" value={new Set(completedAppointments.map((appointment) => appointment.patient)).size} subtitle="Historial reciente" icon={Users} />
+          </div>
+
+          <div className="rounded-[28px] border border-white/80 bg-white/92 p-6 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
+            <div className="mb-5">
+              <h2 className="text-2xl font-bold text-slate-950">Tu agenda inmediata</h2>
+              <p className="mt-1 text-sm text-slate-500">Las siguientes consultas que requieren tu atencion.</p>
+            </div>
+
+            {pendingAppointments.length === 0 ? (
+              <EmptyState title="Sin citas pendientes" description="Cuando un paciente agende contigo, la consulta aparecera aqui." />
+            ) : (
+              <div className="space-y-4">
+                {pendingAppointments.slice(0, 4).map((appointment) => (
+                  <div key={appointment.id} className="rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,_#ffffff,_#f8fbff)] p-5">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-lg font-bold text-slate-950">{appointment.patient}</p>
+                        <p className="mt-1 text-sm text-slate-500">{appointment.reason}</p>
+                        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                          <span>{new Date(appointment.scheduledStartAt).toLocaleDateString('es-CO')}</span>
+                          <span>{new Date(appointment.scheduledStartAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="capitalize">{appointment.careChannel}</span>
+                        </div>
+                      </div>
+                      <div className="flex items-center gap-3">
+                        <StatusBadge status={appointment.status} />
+                        <button
+                          onClick={onGoToAppointments}
+                          className="inline-flex items-center gap-2 rounded-2xl bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+                        >
+                          Abrir
+                          <ChevronRight className="h-4 w-4" />
+                        </button>
                       </div>
                     </div>
                   </div>
-                );
-              })
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>No hay citas programadas para hoy</p>
+                ))}
               </div>
             )}
           </div>
         </div>
 
-        {/* Upcoming Appointments */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Próximas Consultas</h3>
-            <span className="text-sm text-gray-500">{upcomingAppointments.length} pendientes</span>
-          </div>
-          <div className="space-y-3">
-            {upcomingAppointments.slice(0, 4).map(apt => {
-              const patient = getPatientById(apt.patientId);
-              return (
-                <div key={apt.id} className="flex items-center justify-between p-3 border-l-4 border-blue-500 bg-blue-50 rounded-r-lg">
-                  <div>
-                    <p className="font-medium text-gray-900">{patient?.name}</p>
-                    <p className="text-sm text-gray-600">{apt.reason}</p>
+        <div className="space-y-6">
+          <div className="rounded-[28px] border border-white/80 bg-white/92 p-6 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
+            <h2 className="text-2xl font-bold text-slate-950">Actividad reciente</h2>
+            <p className="mt-1 text-sm text-slate-500">Resumen rapido del movimiento mas reciente en tu agenda.</p>
+            <div className="mt-5 space-y-4">
+              {appointments.slice(0, 4).map((appointment) => (
+                <div key={appointment.id} className="flex gap-3 rounded-[22px] bg-slate-50 p-4">
+                  <div className="mt-1 rounded-2xl bg-blue-100 p-3 text-blue-700">
+                    <Stethoscope className="h-5 w-5" />
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-medium text-gray-900">{apt.date}</p>
-                    <p className="text-xs text-gray-500">{apt.time}</p>
+                  <div className="flex-1">
+                    <p className="font-semibold text-slate-900">{appointment.patient}</p>
+                    <p className="mt-1 text-sm text-slate-600">{appointment.reason}</p>
+                    <p className="mt-2 text-xs text-slate-500">{new Date(appointment.scheduledStartAt).toLocaleString('es-CO')}</p>
                   </div>
                 </div>
-              );
-            })}
+              ))}
+            </div>
           </div>
-        </div>
-      </div>
 
-      {/* Quick Actions */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Acciones Rápidas</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <button className="flex items-center gap-3 p-4 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors">
-            <Calendar className="w-5 h-5" />
-            <span className="font-medium">Ver Agenda Completa</span>
-          </button>
-          <button className="flex items-center gap-3 p-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors">
-            <Users className="w-5 h-5" />
-            <span className="font-medium">Gestionar Pacientes</span>
-          </button>
-          <button className="flex items-center gap-3 p-4 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors">
-            <Clock className="w-5 h-5" />
-            <span className="font-medium">Configurar Disponibilidad</span>
-          </button>
         </div>
-      </div>
+      </section>
+    </div>
+  );
+}
 
-      {/* Notifications */}
-      <div className="bg-gradient-to-r from-blue-50 to-purple-50 rounded-xl border border-blue-200 p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-3">Notificaciones</h3>
-        <div className="space-y-2">
-          <div className="flex items-start gap-3 text-sm">
-            <div className="w-2 h-2 bg-blue-600 rounded-full mt-1.5"></div>
-            <p className="text-gray-700">Nueva cita agendada con María González para mañana a las 10:00</p>
-          </div>
-          <div className="flex items-start gap-3 text-sm">
-            <div className="w-2 h-2 bg-green-600 rounded-full mt-1.5"></div>
-            <p className="text-gray-700">Recibiste una nueva reseña de 5 estrellas de Juan Martínez</p>
-          </div>
-          <div className="flex items-start gap-3 text-sm">
-            <div className="w-2 h-2 bg-orange-600 rounded-full mt-1.5"></div>
-            <p className="text-gray-700">Recordatorio: Actualiza tu disponibilidad para la próxima semana</p>
-          </div>
+function ActionChip({ title, icon: Icon, onClick }: any) {
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center gap-2 rounded-full bg-white/16 px-4 py-2 text-sm font-medium text-white/95 transition hover:bg-white/24"
+    >
+      <Icon className="h-4 w-4" />
+      {title}
+    </button>
+  );
+}
+
+function HeroMiniCard({ title, value, icon: Icon }: any) {
+  return (
+    <div className="rounded-[24px] border border-white/18 bg-white/16 p-4 backdrop-blur">
+      <div className="rounded-2xl bg-white/16 p-3 text-white w-fit">
+        <Icon className="h-5 w-5" />
+      </div>
+      <p className="mt-3 text-sm text-blue-50">{title}</p>
+      <p className="mt-1 text-3xl font-black tracking-[-0.04em] text-white">{value}</p>
+    </div>
+  );
+}
+
+function MetricCard({ title, value, subtitle, icon: Icon }: any) {
+  return (
+    <div className="rounded-[26px] border border-white/80 bg-white/90 p-5 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-slate-500">{title}</p>
+          <p className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">{value}</p>
+          <p className="mt-2 text-sm text-slate-500">{subtitle}</p>
+        </div>
+        <div className="rounded-2xl bg-blue-50 p-3 text-blue-700">
+          <Icon className="h-6 w-6" />
         </div>
       </div>
     </div>

@@ -5,12 +5,27 @@ const doctorsRepository = require('./doctors.repository');
 
 async function searchDoctors(filters) {
   const pagination = getPagination(filters);
-  const result = await doctorsRepository.searchDoctors({ ...filters, ...pagination });
+  const result = await doctorsRepository.searchDoctors({
+    ...filters,
+    minRating: filters.minRating ? Number(filters.minRating) : undefined,
+    minYearsExperience: filters.minYearsExperience ? Number(filters.minYearsExperience) : undefined,
+    ...pagination
+  });
 
   return {
     data: result.rows,
     pagination: buildPagination({ ...pagination, total: result.total })
   };
+}
+
+async function getPublicDoctorProfile(doctorId) {
+  const doctor = await doctorsRepository.findPublicDoctorById(doctorId);
+
+  if (!doctor) {
+    throw new AppError('Doctor not found', 404);
+  }
+
+  return doctor;
 }
 
 function validateDocumentPayload(payload) {
@@ -91,7 +106,12 @@ async function approveDoctor(doctorId, user) {
     throw new AppError('Admin profile not found for authenticated user', 403);
   }
 
-  const reviewSummary = await doctorsRepository.getDocumentReviewSummary(doctorId);
+  let reviewSummary = await doctorsRepository.getDocumentReviewSummary(doctorId);
+
+  if (reviewSummary && reviewSummary.approvedDocuments < 1 && reviewSummary.totalDocuments > 0 && reviewSummary.rejectedDocuments === 0) {
+    await doctorsRepository.approvePendingDocumentsForDoctor(doctorId, adminProfile.adminProfileId || adminProfile.id);
+    reviewSummary = await doctorsRepository.getDocumentReviewSummary(doctorId);
+  }
 
   if (!reviewSummary || reviewSummary.approvedDocuments < 1) {
     throw new AppError('Doctor requires at least one approved document before activation', 409);
@@ -142,6 +162,7 @@ async function rejectDoctor(doctorId, payload, user) {
 
 module.exports = {
   approveDoctor,
+  getPublicDoctorProfile,
   listDoctorsPendingReview,
   rejectDoctor,
   reviewMedicalDocument,

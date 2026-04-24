@@ -9,7 +9,8 @@ async function listUsers(query) {
   const result = await usersRepository.listUsers({
     ...pagination,
     role: query.role,
-    status: query.status
+    status: query.status,
+    search: query.search
   });
 
   return {

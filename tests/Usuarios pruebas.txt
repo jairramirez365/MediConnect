@@ -1,0 +1,5 @@
+Rol		Correo					Contraseña
+Administrador	admin@mediconnect.local			Admin123!
+Paciente	ana.paciente@mediconnect.local		Paciente123!
+Médico		dr.lopez@mediconnect.local		Doctor123!
+Comisionista	sara.comisionista@mediconnect.local	Comisionista123!

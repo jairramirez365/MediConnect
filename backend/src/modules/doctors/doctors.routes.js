@@ -10,8 +10,6 @@ const router = express.Router();
 
 router.get('/', asyncHandler(doctorsController.searchDoctors));
 
-router.get('/:doctorId/availability', asyncHandler(availabilityController.getDoctorAvailability));
-
 router.post(
   '/me/documents',
   authenticate,
@@ -25,6 +23,10 @@ router.get(
   authorizeRoles('administrador'),
   asyncHandler(doctorsController.listDoctorsPendingReview)
 );
+
+router.get('/:doctorId', asyncHandler(doctorsController.getPublicDoctorProfile));
+
+router.get('/:doctorId/availability', asyncHandler(availabilityController.getDoctorAvailability));
 
 router.patch(
   '/:doctorId/documents/:documentId/review',

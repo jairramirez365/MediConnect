@@ -1,6 +1,6 @@
 const { query } = require('../../database/query');
 
-async function listUsers({ limit, offset, role, status }) {
+async function listUsers({ limit, offset, role, status, search }) {
   const values = [];
   const conditions = ['deleted_at IS NULL'];
 
@@ -12,6 +12,11 @@ async function listUsers({ limit, offset, role, status }) {
   if (status) {
     values.push(status);
     conditions.push(`estado = $${values.length}`);
+  }
+
+  if (search) {
+    values.push(`%${search}%`);
+    conditions.push(`(correo_electronico ILIKE $${values.length} OR telefono ILIKE $${values.length})`);
   }
 
   values.push(limit);

@@ -74,6 +74,51 @@ async function findDoctorProfileByUserId(userId) {
   return result.rows[0] || null;
 }
 
+async function findActiveSpecialtiesByIds(ids) {
+  const result = await query(
+    `
+      SELECT id, nombre AS name
+      FROM especialidad
+      WHERE id = ANY($1::uuid[])
+        AND estado = 'activa'
+        AND deleted_at IS NULL
+    `,
+    [ids]
+  );
+
+  return result.rows;
+}
+
+async function countActiveSpecialtiesForDoctor(doctorId) {
+  const result = await query(
+    `
+      SELECT COUNT(*)::int AS total
+      FROM medico_especialidad
+      WHERE medico_id = $1
+        AND deleted_at IS NULL
+    `,
+    [doctorId]
+  );
+
+  return result.rows[0]?.total || 0;
+}
+
+async function doctorAlreadyHasSpecialty(doctorId, specialtyId) {
+  const result = await query(
+    `
+      SELECT id
+      FROM medico_especialidad
+      WHERE medico_id = $1
+        AND especialidad_id = $2
+        AND deleted_at IS NULL
+      LIMIT 1
+    `,
+    [doctorId, specialtyId]
+  );
+
+  return Boolean(result.rows[0]);
+}
+
 async function assignSpecialtyToDoctor(doctorId, specialtyId, isPrimary) {
   const result = await query(
     `
@@ -107,8 +152,11 @@ async function removeSpecialtyFromDoctor(doctorId, specialtyId) {
 
 module.exports = {
   assignSpecialtyToDoctor,
+  countActiveSpecialtiesForDoctor,
   createSpecialty,
   deleteSpecialty,
+  doctorAlreadyHasSpecialty,
+  findActiveSpecialtiesByIds,
   findDoctorProfileByUserId,
   listSpecialties,
   removeSpecialtyFromDoctor,

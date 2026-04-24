@@ -21,6 +21,14 @@ async function listAppointments(req, res) {
   res.status(200).json(result);
 }
 
+async function getAppointmentDetail(req, res) {
+  const appointment = await appointmentsService.getAppointmentDetail(req.params.id, req.user);
+
+  res.status(200).json({
+    data: appointment
+  });
+}
+
 async function updateAppointmentStatus(req, res) {
   const appointment = await appointmentsService.updateAppointmentStatus(req.params.id, req.body);
 
@@ -66,12 +74,23 @@ async function completeAppointment(req, res) {
   });
 }
 
+async function respondCommissionAgentChatRequest(req, res) {
+  const appointment = await appointmentsService.respondCommissionAgentChatRequest(req.params.id, req.body, req.user);
+
+  res.status(200).json({
+    message: 'Commission agent chat participation updated successfully',
+    data: appointment
+  });
+}
+
 module.exports = {
   cancelAppointment,
   completeAppointment,
   confirmAppointment,
   createAppointment,
+  getAppointmentDetail,
   listAppointments,
+  respondCommissionAgentChatRequest,
   rescheduleAppointment,
   updateAppointmentStatus
 };

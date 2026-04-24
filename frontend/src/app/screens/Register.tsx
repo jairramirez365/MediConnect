@@ -1,16 +1,27 @@
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { Activity, ArrowLeft, UserPlus } from 'lucide-react';
 import { useAuth } from '../../store/AuthContext';
+import { api } from '../../services/api';
+import { AppBackdrop } from '../components/AppBackdrop';
+import { AuthShowcase } from '../components/AuthShowcase';
 
 type RegisterProps = {
   onGoLogin: () => void;
+  onBackHome: () => void;
 };
 
-export function Register({ onGoLogin }: RegisterProps) {
+export function Register({ onGoLogin, onBackHome }: RegisterProps) {
   const { register } = useAuth();
   const [role, setRole] = useState<'paciente' | 'medico' | 'comisionista'>('paciente');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [specialties, setSpecialties] = useState<any[]>([]);
+
+  useEffect(() => {
+    api.specialties()
+      .then((response) => setSpecialties(response.data || []))
+      .catch(() => setSpecialties([]));
+  }, []);
 
   async function handleSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -35,10 +46,10 @@ export function Register({ onGoLogin }: RegisterProps) {
         ...baseProfile,
         medicalLicenseNumber: String(form.get('medicalLicenseNumber') || ''),
         consultationFee: Number(form.get('consultationFee') || 0),
-        careMode: String(form.get('careMode') || 'virtual'),
         city: String(form.get('city') || ''),
         yearsOfExperience: Number(form.get('yearsOfExperience') || 0),
-        professionalBio: String(form.get('professionalBio') || '')
+        professionalBio: String(form.get('professionalBio') || ''),
+        specialtyIds: [String(form.get('primarySpecialtyId') || ''), String(form.get('secondarySpecialtyId') || '')].filter(Boolean)
       },
       comisionista: {
         ...baseProfile,
@@ -64,101 +75,108 @@ export function Register({ onGoLogin }: RegisterProps) {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-cyan-50 p-5">
-      <div className="mx-auto flex min-h-screen max-w-5xl items-center justify-center">
-        <div className="w-full rounded-3xl border border-gray-200 bg-white p-6 shadow-2xl shadow-blue-900/10 md:p-8">
-          <div className="mb-8 flex items-start justify-between gap-4">
-            <div>
-              <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600">
-                <Activity className="h-6 w-6 text-white" />
+    <AppBackdrop>
+      <div className="grid min-h-screen lg:grid-cols-[1fr_1.08fr]">
+        <AuthShowcase
+          title="Crea tu cuenta y continua dentro de una experiencia consistente."
+          description="Registro, descubrimiento y producto interno deben sentirse como una sola aplicacion. Esta pantalla ya forma parte de ese mismo ecosistema."
+        />
+
+        <div className="flex items-center justify-center p-5 lg:p-8">
+          <div className="w-full max-w-3xl rounded-[34px] border border-white/80 bg-white/92 p-6 shadow-[0_28px_90px_rgba(37,99,235,0.12)] backdrop-blur md:p-8">
+            <div className="mb-8 flex items-start justify-between gap-4">
+              <div>
+                <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-blue-600">
+                  <Activity className="h-6 w-6 text-white" />
+                </div>
+                <h2 className="text-3xl font-bold text-gray-900">Crear cuenta</h2>
+                <p className="mt-2 text-sm text-gray-600">
+                  Registro conectado al backend. Los medicos quedan pendientes de documentacion.
+                </p>
               </div>
-              <h2 className="text-3xl font-bold text-gray-900">Crear cuenta</h2>
-              <p className="mt-2 text-sm text-gray-600">
-                Registro conectado al backend. Los médicos quedan pendientes de documentación.
-              </p>
-            </div>
-            <button onClick={onGoLogin} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
-              <ArrowLeft className="h-4 w-4" />
-              Login
-            </button>
-          </div>
-
-          <form className="space-y-6" onSubmit={handleSubmit}>
-            <div className="grid gap-4 md:grid-cols-3">
-              {[
-                ['paciente', 'Paciente'],
-                ['medico', 'Médico'],
-                ['comisionista', 'Comisionista']
-              ].map(([value, label]) => (
-                <button
-                  key={value}
-                  type="button"
-                  onClick={() => setRole(value as any)}
-                  className={`rounded-2xl border p-4 text-left transition ${
-                    role === value ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-blue-200'
-                  }`}
-                >
-                  <p className="font-bold">{label}</p>
-                  <p className="mt-1 text-xs text-gray-500">Registro inicial</p>
+              <div className="flex flex-col gap-2">
+                <button onClick={onBackHome} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-gray-600 transition hover:bg-blue-50 hover:text-blue-700">
+                  <ArrowLeft className="h-4 w-4" />
+                  Inicio
                 </button>
-              ))}
+                <button onClick={onGoLogin} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-gray-600 transition hover:bg-blue-50 hover:text-blue-700">
+                  <ArrowLeft className="h-4 w-4" />
+                  Login
+                </button>
+              </div>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-2">
-              <Field name="firstName" label="Nombres" required />
-              <Field name="lastName" label="Apellidos" required />
-              <Field name="email" label="Correo electrónico" type="email" required />
-              <Field name="password" label="Contraseña" type="password" required placeholder="Mínimo 8 caracteres" />
-              <Field name="phone" label="Teléfono" />
-              <Field name="documentNumber" label="Número de documento" required />
-              <Field name="documentType" label="Tipo de documento" defaultValue="CC" required />
+            <form className="space-y-6" onSubmit={handleSubmit}>
+              <div className="grid gap-4 md:grid-cols-3">
+                {[
+                  ['paciente', 'Paciente'],
+                  ['medico', 'Medico'],
+                  ['comisionista', 'Comisionista']
+                ].map(([value, label]) => (
+                  <button
+                    key={value}
+                    type="button"
+                    onClick={() => setRole(value as any)}
+                    className={`rounded-2xl border p-4 text-left transition ${
+                      role === value ? 'border-blue-500 bg-blue-50 text-blue-700' : 'border-gray-200 hover:border-blue-200'
+                    }`}
+                  >
+                    <p className="font-bold">{label}</p>
+                    <p className="mt-1 text-xs text-gray-500">Registro inicial</p>
+                  </button>
+                ))}
+              </div>
 
-              {role === 'paciente' && (
-                <>
-                  <Field name="birthDate" label="Fecha de nacimiento" type="date" required />
-                  <Field name="gender" label="Sexo" placeholder="femenino, masculino..." />
-                </>
-              )}
+              <div className="grid gap-4 md:grid-cols-2">
+                <Field name="firstName" label="Nombres" required />
+                <Field name="lastName" label="Apellidos" required />
+                <Field name="email" label="Correo electronico" type="email" required />
+                <Field name="password" label="Contrasena" type="password" required placeholder="Minimo 8 caracteres" />
+                <Field name="phone" label="Telefono" />
+                <Field name="documentNumber" label="Numero de documento" required />
+                <Field name="documentType" label="Tipo de documento" defaultValue="CC" required />
 
-              {role === 'medico' && (
-                <>
-                  <Field name="medicalLicenseNumber" label="Registro médico" required />
-                  <Field name="city" label="Ciudad" required />
-                  <Field name="consultationFee" label="Valor consulta" type="number" required />
-                  <Field name="yearsOfExperience" label="Años de experiencia" type="number" />
-                  <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-gray-700">Modalidad</span>
-                    <select name="careMode" className="w-full rounded-xl border border-gray-300 px-4 py-3">
-                      <option value="virtual">Virtual</option>
-                      <option value="presencial">Presencial</option>
-                      <option value="hibrida">Híbrida</option>
-                    </select>
-                  </label>
-                  <Field name="professionalBio" label="Biografía profesional" />
-                </>
-              )}
+                {role === 'paciente' && (
+                  <>
+                    <Field name="birthDate" label="Fecha de nacimiento" type="date" required />
+                    <Field name="gender" label="Sexo" placeholder="femenino, masculino..." />
+                  </>
+                )}
 
-              {role === 'comisionista' && (
-                <>
-                  <Field name="mainReferralCode" label="Código referido principal" required />
-                  <Field name="baseCommissionPercentage" label="Porcentaje comisión base" type="number" defaultValue="5" required />
-                </>
-              )}
-            </div>
+                {role === 'medico' && (
+                  <>
+                    <Field name="medicalLicenseNumber" label="Registro medico" required />
+                    <Field name="city" label="Ciudad" required />
+                    <Field name="consultationFee" label="Valor consulta" type="number" required />
+                    <Field name="yearsOfExperience" label="Anos de experiencia" type="number" />
+                    <SelectField name="primarySpecialtyId" label="Especialidad principal" options={specialties} required />
+                    <SelectField name="secondarySpecialtyId" label="Segunda especialidad" options={specialties} />
+                    <Field name="professionalBio" label="Biografia profesional" />
+                  </>
+                )}
 
-            {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+                {role === 'comisionista' && (
+                  <>
+                    <Field name="mainReferralCode" label="Codigo referido principal" required />
+                    <Field name="baseCommissionPercentage" label="Porcentaje comision base" type="number" defaultValue="5" required />
+                  </>
+                )}
+              </div>
 
-            <button
-              disabled={isSubmitting}
-              className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-medium text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:opacity-70"
-            >
-              <UserPlus className="h-4 w-4" />
-              {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
-            </button>
-          </form>
+              {error && <p className="rounded-xl bg-red-50 px-4 py-3 text-sm text-red-700">{error}</p>}
+
+              <button
+                disabled={isSubmitting}
+                className="flex w-full items-center justify-center gap-2 rounded-xl bg-blue-600 px-4 py-3 font-medium text-white shadow-lg shadow-blue-600/20 transition hover:bg-blue-700 disabled:opacity-70"
+              >
+                <UserPlus className="h-4 w-4" />
+                {isSubmitting ? 'Creando cuenta...' : 'Crear cuenta'}
+              </button>
+            </form>
+          </div>
         </div>
       </div>
-    </div>
+    </AppBackdrop>
   );
 }
 
@@ -172,6 +190,23 @@ function Field(props: any) {
         {...inputProps}
         className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
       />
+    </label>
+  );
+}
+
+function SelectField({ label, options, ...props }: any) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-medium text-gray-700">{label}</span>
+      <select
+        {...props}
+        className="w-full rounded-xl border border-gray-300 px-4 py-3 outline-none transition focus:border-blue-500 focus:ring-2 focus:ring-blue-100"
+      >
+        <option value="">Selecciona una opcion</option>
+        {options.map((option: any) => (
+          <option key={option.id} value={option.id}>{option.name}</option>
+        ))}
+      </select>
     </label>
   );
 }

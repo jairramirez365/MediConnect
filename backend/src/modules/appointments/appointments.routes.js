@@ -15,9 +15,15 @@ router.get(
   asyncHandler(appointmentsController.listAppointments)
 );
 
+router.get(
+  '/:id',
+  authorizeRoles('paciente', 'medico', 'comisionista', 'administrador'),
+  asyncHandler(appointmentsController.getAppointmentDetail)
+);
+
 router.post(
   '/',
-  authorizeRoles('paciente', 'administrador'),
+  authorizeRoles('paciente', 'comisionista', 'administrador'),
   asyncHandler(appointmentsController.createAppointment)
 );
 
@@ -31,6 +37,12 @@ router.patch(
   '/:id/confirm',
   authorizeRoles('medico', 'administrador'),
   asyncHandler(appointmentsController.confirmAppointment)
+);
+
+router.patch(
+  '/:id/commission-agent-chat-response',
+  authorizeRoles('paciente', 'administrador'),
+  asyncHandler(appointmentsController.respondCommissionAgentChatRequest)
 );
 
 router.patch(

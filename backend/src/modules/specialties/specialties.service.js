@@ -30,12 +30,14 @@ async function assignMySpecialty(payload, user) {
   if (!isUuid(payload.specialtyId)) throw new AppError('Invalid specialtyId', 400);
   const doctorProfile = await specialtiesRepository.findDoctorProfileByUserId(user.sub);
   if (!doctorProfile) throw new AppError('Doctor profile not found', 403);
+  await ensureDoctorCanReceiveSpecialty(doctorProfile.id, payload.specialtyId);
   return specialtiesRepository.assignSpecialtyToDoctor(doctorProfile.id, payload.specialtyId, payload.isPrimary);
 }
 
 async function assignSpecialtyToDoctor(doctorId, payload) {
   if (!isUuid(doctorId)) throw new AppError('Invalid doctorId', 400);
   if (!isUuid(payload.specialtyId)) throw new AppError('Invalid specialtyId', 400);
+  await ensureDoctorCanReceiveSpecialty(doctorId, payload.specialtyId);
   return specialtiesRepository.assignSpecialtyToDoctor(doctorId, payload.specialtyId, payload.isPrimary);
 }
 
@@ -45,6 +47,24 @@ async function removeSpecialtyFromDoctor(doctorId, specialtyId) {
   const deleted = await specialtiesRepository.removeSpecialtyFromDoctor(doctorId, specialtyId);
   if (!deleted) throw new AppError('Doctor specialty not found', 404);
   return deleted;
+}
+
+async function ensureDoctorCanReceiveSpecialty(doctorId, specialtyId) {
+  const specialties = await specialtiesRepository.findActiveSpecialtiesByIds([specialtyId]);
+
+  if (specialties.length === 0) {
+    throw new AppError('Specialty not found or inactive', 404);
+  }
+
+  const alreadyAssigned = await specialtiesRepository.doctorAlreadyHasSpecialty(doctorId, specialtyId);
+  if (alreadyAssigned) {
+    return;
+  }
+
+  const total = await specialtiesRepository.countActiveSpecialtiesForDoctor(doctorId);
+  if (total >= 2) {
+    throw new AppError('A doctor can only have up to two specialties', 409);
+  }
 }
 
 module.exports = {

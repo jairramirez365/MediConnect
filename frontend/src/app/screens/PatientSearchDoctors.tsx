@@ -1,7 +1,6 @@
-import { Calendar, DollarSign, MapPin, Search, Star, Stethoscope } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import { CalendarDays, DollarSign, Search, ShieldCheck, Star, Stethoscope, MapPin, BriefcaseMedical } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../services/api';
-import { useAuth } from '../../store/AuthContext';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncState';
 
 type Doctor = {
@@ -12,197 +11,368 @@ type Doctor = {
   careMode: string;
   consultationFee: string;
   ratingAverage: string;
+  yearsOfExperience: number;
+  professionalBio: string;
   specialties: string[];
 };
 
-export function PatientSearchDoctors() {
-  const { profile } = useAuth();
+type SearchForm = {
+  specialty: string;
+  city: string;
+  minRating: string;
+  minYearsExperience: string;
+  date: string;
+  jornada: string;
+};
+
+type PatientSearchDoctorsProps = {
+  onViewDoctor: (doctorId: string) => void;
+  onBookAppointment: (doctorId?: string | null) => void;
+};
+
+const initialForm: SearchForm = {
+  specialty: '',
+  city: '',
+  minRating: '',
+  minYearsExperience: '',
+  date: '',
+  jornada: ''
+};
+
+export function PatientSearchDoctors({ onViewDoctor, onBookAppointment }: PatientSearchDoctorsProps) {
+  const [catalogDoctors, setCatalogDoctors] = useState<Doctor[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
-  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
-  const [slots, setSlots] = useState<any[]>([]);
-  const [query, setQuery] = useState({ specialty: '', city: '' });
-  const [reason, setReason] = useState('Consulta general');
-  const [message, setMessage] = useState('');
+  const [form, setForm] = useState<SearchForm>(initialForm);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
-  const [isScheduling, setIsScheduling] = useState(false);
+  const [isFiltering, setIsFiltering] = useState(false);
 
-  async function loadDoctors() {
+  async function loadCatalog() {
     setIsLoading(true);
     setError('');
 
     try {
-      const response = await api.doctors({ ...query, limit: 12 });
-      setDoctors(response.rows || []);
+      const response = await api.doctors({ limit: 100 });
+      const rows = response.data || [];
+      setCatalogDoctors(rows);
+      setDoctors(rows);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No fue posible cargar médicos.');
+      setError(err instanceof Error ? err.message : 'No fue posible cargar medicos.');
     } finally {
       setIsLoading(false);
     }
   }
 
-  async function loadAvailability(doctor: Doctor) {
-    setSelectedDoctor(doctor);
-    setMessage('');
-    const today = new Date();
-    const dateFrom = today.toISOString().slice(0, 10);
-    const dateTo = new Date(today.getTime() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10);
+  async function applyFilters() {
+    setIsFiltering(true);
+    setError('');
 
     try {
-      const response = await api.doctorAvailability(doctor.id, { dateFrom, dateTo });
-      setSlots((response.data?.slots || []).filter((slot: any) => slot.isAvailable).slice(0, 8));
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'No fue posible cargar disponibilidad.');
-    }
-  }
-
-  async function schedule(slot: any) {
-    if (!profile?.id) {
-      setMessage('Tu perfil de paciente no está disponible en sesión.');
-      return;
-    }
-
-    setIsScheduling(true);
-    setMessage('');
-
-    try {
-      await api.createAppointment({
-        patientId: profile.id,
-        doctorId: slot.doctorId,
-        scheduledStartAt: slot.startAt,
-        scheduledEndAt: slot.endAt,
-        timeZone: slot.timeZone || 'America/Bogota',
-        reason,
-        appointmentType: 'primera_vez',
-        careChannel: selectedDoctor?.careMode === 'presencial' ? 'presencial' : 'virtual',
-        cancellationPenalty: 50000,
-        cancellationDeadline: new Date(new Date(slot.startAt).getTime() - 6 * 60 * 60 * 1000).toISOString()
+      const response = await api.doctors({
+        specialty: form.specialty,
+        city: form.city,
+        minRating: form.minRating,
+        minYearsExperience: form.minYearsExperience,
+        limit: 100
       });
-      setMessage('Cita creada correctamente. Queda pendiente de confirmación médica.');
-      await loadAvailability(selectedDoctor!);
+      let filteredDoctors = response.data || [];
+
+      if (form.date || form.jornada) {
+        const date = form.date || new Date().toISOString().slice(0, 10);
+        const availabilityResponses = await Promise.all(
+          filteredDoctors.map(async (doctor) => {
+            const availability = await api.doctorAvailability(doctor.id, { date });
+            const slots = (availability.data?.slots || []).filter((slot: any) => {
+              if (!slot.isAvailable) return false;
+              const hour = new Date(slot.startAt).getHours();
+              if (form.jornada === 'manana') return hour < 12;
+              if (form.jornada === 'tarde') return hour >= 12;
+              return true;
+            });
+
+            return {
+              doctor,
+              slots
+            };
+          })
+        );
+
+        filteredDoctors = availabilityResponses
+          .filter((item) => item.slots.length > 0)
+          .map((item) => ({
+            ...item.doctor,
+            nextSlots: item.slots.slice(0, 3)
+          }));
+      }
+
+      setDoctors(filteredDoctors);
     } catch (err) {
-      setMessage(err instanceof Error ? err.message : 'No fue posible agendar la cita.');
+      setError(err instanceof Error ? err.message : 'No fue posible aplicar filtros.');
     } finally {
-      setIsScheduling(false);
+      setIsFiltering(false);
     }
   }
 
   useEffect(() => {
-    loadDoctors();
+    loadCatalog();
   }, []);
 
-  if (isLoading) return <LoadingState label="Buscando médicos activos..." />;
-  if (error) return <ErrorState message={error} />;
+  const specialties = useMemo(
+    () => Array.from(new Set(catalogDoctors.flatMap((doctor) => doctor.specialties || []).filter(Boolean))).sort(),
+    [catalogDoctors]
+  );
+  const cities = useMemo(
+    () => Array.from(new Set(catalogDoctors.map((doctor) => doctor.ciudad).filter(Boolean))).sort(),
+    [catalogDoctors]
+  );
+  const ratings = useMemo(
+    () =>
+      Array.from(
+        new Set(
+          catalogDoctors
+            .map((doctor) => Number(doctor.ratingAverage || 0))
+            .filter((value) => value > 0)
+            .map((value) => value.toFixed(1))
+        )
+      ).sort((a, b) => Number(b) - Number(a)),
+    [catalogDoctors]
+  );
+  const yearsExperience = useMemo(
+    () =>
+      Array.from(
+        new Set(catalogDoctors.map((doctor) => Number(doctor.yearsOfExperience || 0)).filter((value) => value > 0))
+      ).sort((a, b) => a - b),
+    [catalogDoctors]
+  );
+
+  if (isLoading) return <LoadingState label="Buscando medicos activos..." />;
+  if (error && !doctors.length) return <ErrorState message={error} />;
 
   return (
     <div className="space-y-6">
-      <div className="rounded-xl border border-gray-200 bg-white p-6">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400" />
-          <input
-            type="text"
-            value={query.specialty}
-            onChange={(event) => setQuery((value) => ({ ...value, specialty: event.target.value }))}
-            placeholder="Buscar por especialidad..."
-            className="w-full rounded-lg border border-gray-300 py-3 pl-10 pr-4 focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-        </div>
-        <div className="mt-4 grid gap-4 md:grid-cols-[1fr_auto]">
-          <input
-            value={query.city}
-            onChange={(event) => setQuery((value) => ({ ...value, city: event.target.value }))}
-            placeholder="Ciudad"
-            className="rounded-lg border border-gray-300 px-4 py-2"
-          />
-          <button onClick={loadDoctors} className="rounded-lg bg-blue-600 px-5 py-2 font-medium text-white hover:bg-blue-700">
-            Aplicar filtros
-          </button>
-        </div>
-      </div>
+      <section className="rounded-[32px] border border-white/80 bg-[linear-gradient(135deg,_#0f4fcf_0%,_#60a5fa_60%,_#dbeafe_100%)] p-6 text-white shadow-[0_28px_80px_rgba(37,99,235,0.18)] md:p-8">
+        <div className="grid gap-6 lg:grid-cols-[1fr_0.95fr] lg:items-end">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/16 px-4 py-2 text-sm font-semibold text-white/95">
+              <ShieldCheck className="h-4 w-4" />
+              Busqueda medica guiada
+            </div>
+            <h1 className="mt-5 text-4xl font-black tracking-[-0.05em] md:text-5xl">Encuentra al especialista ideal para tu siguiente consulta</h1>
+            <p className="mt-4 max-w-2xl text-base leading-8 text-blue-50 md:text-lg">
+              Filtra por especialidad, ciudad, calificacion y experiencia. Cada opcion viene de informacion real disponible en la plataforma.
+            </p>
+          </div>
 
-      {doctors.length === 0 ? (
-        <EmptyState title="No hay médicos activos" description="Aún no hay resultados aprobados con estos filtros." />
-      ) : (
-        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
-          {doctors.map((doctor) => (
-            <article key={doctor.id} className="rounded-xl border border-gray-200 bg-white p-6 transition-all hover:border-blue-300 hover:shadow-xl">
-              <div className="flex flex-col items-center text-center">
-                <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-blue-500 to-purple-600 text-2xl font-bold text-white">
-                  {doctor.nombres?.charAt(0) || 'M'}
-                </div>
-                <h3 className="text-lg font-bold text-gray-900">
-                  Dr(a). {doctor.nombres} {doctor.apellidos}
-                </h3>
-                <p className="font-medium text-blue-600">{doctor.specialties?.join(', ') || 'Medicina general'}</p>
-                <div className="mt-2 flex items-center gap-2">
-                  <Star className="h-4 w-4 fill-yellow-400 text-yellow-400" />
-                  <span className="font-bold text-gray-900">{Number(doctor.ratingAverage || 0).toFixed(1)}</span>
-                </div>
-              </div>
+          <div className="rounded-[28px] border border-white/18 bg-white/16 p-5 backdrop-blur">
+            <div className="grid gap-4 md:grid-cols-2">
+              <FilterSelect
+                label="Especialidad"
+                value={form.specialty}
+                onChange={(value) => setForm((current) => ({ ...current, specialty: value }))}
+                options={specialties}
+              />
+              <FilterSelect
+                label="Ciudad"
+                value={form.city}
+                onChange={(value) => setForm((current) => ({ ...current, city: value }))}
+                options={cities}
+              />
+              <FilterSelect
+                label="Calificacion minima"
+                value={form.minRating}
+                onChange={(value) => setForm((current) => ({ ...current, minRating: value }))}
+                options={ratings.map((rating) => `${rating}+`)}
+                optionValues={ratings}
+              />
+              <FilterSelect
+                label="Experiencia minima"
+                value={form.minYearsExperience}
+                onChange={(value) => setForm((current) => ({ ...current, minYearsExperience: value }))}
+                options={yearsExperience.map((years) => `${years} años`)}
+                optionValues={yearsExperience.map(String)}
+              />
+              <FilterInput
+                label="Fecha disponible"
+                type="date"
+                value={form.date}
+                onChange={(value) => setForm((current) => ({ ...current, date: value }))}
+              />
+              <FilterSelect
+                label="Jornada"
+                value={form.jornada}
+                onChange={(value) => setForm((current) => ({ ...current, jornada: value }))}
+                options={['Mañana', 'Tarde']}
+                optionValues={['manana', 'tarde']}
+              />
+            </div>
 
-              <div className="my-5 space-y-3 text-sm">
-                <Info icon={MapPin} label="Ciudad" value={doctor.ciudad || 'No registrada'} />
-                <Info icon={Stethoscope} label="Modalidad" value={doctor.careMode || 'virtual'} />
-                <Info icon={DollarSign} label="Consulta" value={`$${Number(doctor.consultationFee || 0).toLocaleString('es-CO')}`} />
-              </div>
-
+            <div className="mt-4 flex flex-wrap gap-3">
               <button
-                onClick={() => loadAvailability(doctor)}
-                className="flex w-full items-center justify-center gap-2 rounded-lg bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+                onClick={applyFilters}
+                disabled={isFiltering}
+                className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 font-semibold text-blue-700 transition hover:bg-blue-50 disabled:opacity-60"
               >
-                <Calendar className="h-4 w-4" />
-                Ver disponibilidad
+                <Search className="h-4 w-4" />
+                Buscar filtros
               </button>
-            </article>
-          ))}
+              <button
+                onClick={() => {
+                  setForm(initialForm);
+                  setDoctors(catalogDoctors);
+                }}
+                className="rounded-2xl border border-white/30 bg-white/10 px-5 py-3 font-semibold text-white transition hover:bg-white/18"
+              >
+                Limpiar
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {error && (
+        <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
+          {error}
         </div>
       )}
 
-      {selectedDoctor && (
-        <div className="rounded-xl border border-gray-200 bg-white p-6">
-          <h3 className="text-lg font-bold text-gray-900">
-            Slots disponibles con Dr(a). {selectedDoctor.nombres} {selectedDoctor.apellidos}
-          </h3>
-          <input
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-            className="mt-4 w-full rounded-lg border border-gray-300 px-4 py-2"
-            placeholder="Motivo de consulta"
-          />
-          {message && <p className="mt-4 rounded-lg bg-blue-50 px-4 py-3 text-sm text-blue-700">{message}</p>}
-          <div className="mt-4 grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-            {slots.length === 0 ? (
-              <p className="text-sm text-gray-600">Este médico no tiene slots disponibles en los próximos días.</p>
-            ) : (
-              slots.map((slot) => (
+      {doctors.length === 0 ? (
+        <EmptyState title="No hay medicos activos" description="Ajusta tus filtros o limpia la busqueda para volver a explorar especialistas." />
+      ) : (
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
+          {doctors.map((doctor) => (
+            <article key={doctor.id} className="rounded-[28px] border border-white/80 bg-white/92 p-6 transition-all hover:-translate-y-1 hover:border-blue-300 hover:shadow-[0_20px_60px_rgba(37,99,235,0.10)]">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex items-center gap-4">
+                  <div className="flex h-16 w-16 items-center justify-center rounded-3xl bg-gradient-to-br from-blue-500 to-sky-400 text-xl font-bold text-white">
+                    {doctor.nombres?.charAt(0) || 'M'}
+                  </div>
+                      <div>
+                        <h3 className="text-lg font-bold text-slate-950">Dr(a). {doctor.nombres} {doctor.apellidos}</h3>
+                        <p className="mt-1 text-sm font-medium text-blue-600">{doctor.specialties?.join(', ') || 'Especialidad activa'}</p>
+                      </div>
+                    </div>
+                <div className="shrink-0 rounded-full bg-amber-50 px-3 py-1 text-sm font-semibold text-amber-700">
+                  <Star className="h-4 w-4 fill-current" />
+                  {Number(doctor.ratingAverage || 0).toFixed(1)}
+                </div>
+              </div>
+
+              <p className="mt-5 text-sm leading-7 text-slate-600">
+                {doctor.professionalBio || 'Perfil profesional disponible para ayudarte a tomar una decision informada.'}
+              </p>
+
+              <div className="my-5 space-y-3 text-sm">
+                <Info icon={MapPin} label="Ciudad" value={doctor.ciudad || 'No registrada'} />
+                <Info icon={DollarSign} label="Consulta" value={`$${Number(doctor.consultationFee || 0).toLocaleString('es-CO')}`} />
+                <Info icon={BriefcaseMedical} label="Experiencia" value={`${Number(doctor.yearsOfExperience || 0)} años`} />
+              </div>
+
+              {doctor.nextSlots?.length ? (
+                <div className="mb-5 rounded-[20px] bg-blue-50/70 p-3">
+                  <p className="text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">Disponibilidad encontrada</p>
+                  <div className="mt-2 flex flex-wrap gap-2">
+                    {doctor.nextSlots.map((slot: any) => (
+                      <span key={slot.startAt} className="rounded-full bg-white px-3 py-1 text-xs font-medium text-slate-600 shadow-sm">
+                        {new Date(slot.startAt).toLocaleDateString('es-CO')} {new Date(slot.startAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              ) : null}
+
+              <div className="grid gap-3 sm:grid-cols-2">
                 <button
-                  key={slot.startAt}
-                  disabled={isScheduling}
-                  onClick={() => schedule(slot)}
-                  className="rounded-xl border border-blue-100 bg-blue-50 p-4 text-left text-blue-800 hover:border-blue-300 disabled:opacity-60"
+                  onClick={() => onViewDoctor(doctor.id)}
+                  className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:text-blue-700"
                 >
-                  <p className="font-bold">{new Date(slot.startAt).toLocaleDateString('es-CO')}</p>
-                  <p className="text-sm">
-                    {new Date(slot.startAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
-                  </p>
+                  Ver perfil
                 </button>
-              ))
-            )}
-          </div>
+                <button
+                  onClick={() => onBookAppointment(doctor.id)}
+                  className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                >
+                  Agendar cita
+                </button>
+              </div>
+            </article>
+          ))}
         </div>
       )}
     </div>
   );
 }
 
+function FilterSelect({
+  label,
+  value,
+  options,
+  optionValues,
+  onChange
+}: {
+  label: string;
+  value: string;
+  options: string[];
+  optionValues?: string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-semibold text-white/90">{label}</span>
+      <select
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        className="w-full rounded-2xl border border-white/30 bg-white/18 px-4 py-3 text-white outline-none focus:ring-2 focus:ring-white/40"
+      >
+        <option value="" className="text-slate-900">Todos</option>
+        {options.map((option, index) => (
+          <option
+            key={`${label}-${option}`}
+            value={optionValues?.[index] ?? option}
+            className="text-slate-900"
+          >
+            {option}
+          </option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
+function FilterInput({
+  label,
+  value,
+  type,
+  onChange
+}: {
+  label: string;
+  value: string;
+  type: string;
+  onChange: (value: string) => void;
+}) {
+  return (
+    <label className="block">
+      <span className="mb-2 block text-sm font-semibold text-white/90">{label}</span>
+      <div className="relative">
+        <CalendarDays className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-white/75" />
+        <input
+          type={type}
+          value={value}
+          onChange={(event) => onChange(event.target.value)}
+          className="w-full rounded-2xl border border-white/30 bg-white/18 py-3 pl-11 pr-4 text-white outline-none focus:ring-2 focus:ring-white/40"
+        />
+      </div>
+    </label>
+  );
+}
+
 function Info({ icon: Icon, label, value }: any) {
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-2 text-gray-600">
+    <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center gap-2 text-slate-600">
         <Icon className="h-4 w-4" />
         <span>{label}</span>
       </div>
-      <span className="font-medium capitalize text-gray-900">{value}</span>
+      <span className="text-right font-medium capitalize text-slate-900">{value}</span>
     </div>
   );
 }

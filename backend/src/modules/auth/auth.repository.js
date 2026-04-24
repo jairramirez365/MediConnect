@@ -1,4 +1,5 @@
 const { query, withTransaction } = require('../../database/query');
+const AppError = require('../../utils/AppError');
 
 const safeUserFields = `
   id,
@@ -133,6 +134,22 @@ async function createUserWithProfile(payload) {
     }
 
     if (payload.role === 'medico') {
+      const specialtyIds = payload.profile.specialtyIds || [];
+      const specialtiesResult = await client.query(
+        `
+          SELECT id
+          FROM especialidad
+          WHERE id = ANY($1::uuid[])
+            AND estado = 'activa'
+            AND deleted_at IS NULL
+        `,
+        [specialtyIds]
+      );
+
+      if (specialtiesResult.rows.length !== specialtyIds.length) {
+        throw new AppError('One or more specialties are invalid for doctor registration', 400);
+      }
+
       const profileResult = await client.query(
         `
           INSERT INTO perfil_medico (
@@ -163,12 +180,26 @@ async function createUserWithProfile(payload) {
           payload.profile.professionalBio || null,
           payload.profile.yearsOfExperience || 0,
           payload.profile.consultationFee,
-          payload.profile.careMode,
+          'virtual',
           payload.profile.city
         ]
       );
 
       profile = profileResult.rows[0];
+
+      for (const [index, specialtyId] of specialtyIds.entries()) {
+        await client.query(
+          `
+            INSERT INTO medico_especialidad (
+              medico_id,
+              especialidad_id,
+              es_principal
+            )
+            VALUES ($1, $2, $3)
+          `,
+          [profile.id, specialtyId, index === 0]
+        );
+      }
     }
 
     if (payload.role === 'comisionista') {

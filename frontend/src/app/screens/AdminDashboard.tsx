@@ -1,148 +1,246 @@
-import { Users, Calendar, DollarSign, TrendingUp, Activity } from 'lucide-react';
-import { StatCard } from '../components/StatCard';
-import { doctors, patients, appointments, payments } from '../data/mockData';
+import { Activity, CalendarDays, ShieldCheck, Users } from 'lucide-react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { api } from '../../services/api';
+import { ErrorState, LoadingState } from '../components/AsyncState';
 
-export function AdminDashboard() {
-  const totalRevenue = payments.filter(p => p.status === 'completed').reduce((sum, p) => sum + p.amount, 0);
-  const thisMonthAppointments = appointments.filter(a => a.date.startsWith('2026-03')).length;
+export function AdminDashboard({ onGoToUsers, onGoToDoctorReview }: { onGoToUsers: () => void; onGoToDoctorReview: () => void }) {
+  const [users, setUsers] = useState<any[]>([]);
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [pendingDoctors, setPendingDoctors] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    async function loadData() {
+      try {
+        const [usersResponse, appointmentsResponse, pendingDoctorsResponse] = await Promise.all([
+          api.users({ page: 1, limit: 20 }),
+          api.appointments({ limit: 20 }),
+          api.pendingDoctors()
+        ]);
+
+        setUsers(usersResponse.data || []);
+        setAppointments(appointmentsResponse.data || []);
+        setPendingDoctors(pendingDoctorsResponse.data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'No fue posible cargar el inicio administrativo.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadData();
+  }, []);
+
+  const metrics = useMemo(() => {
+    const patients = users.filter((user) => user.role === 'paciente').length;
+    const doctors = users.filter((user) => user.role === 'medico').length;
+    const blocked = users.filter((user) => user.status === 'bloqueado').length;
+    const upcoming = appointments.filter((appointment) =>
+      ['pendiente_confirmacion', 'confirmada', 'en_curso'].includes(appointment.status)
+    ).length;
+
+    return { patients, doctors, blocked, upcoming };
+  }, [appointments, users]);
+
+  const recentAppointments = appointments.slice(0, 5);
+
+  if (isLoading) return <LoadingState label="Cargando inicio administrativo..." />;
+  if (error) return <ErrorState message={error} />;
 
   return (
-    <div className="space-y-6">
-      {/* KPI Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Total Pacientes"
-          value={patients.length}
-          icon={Users}
-          color="blue"
-          trend={{ value: '+12.5%', isPositive: true }}
-        />
-        <StatCard
-          title="Total Médicos"
-          value={doctors.length}
-          icon={Activity}
-          color="green"
-          trend={{ value: '+8.3%', isPositive: true }}
-        />
-        <StatCard
-          title="Citas Este Mes"
-          value={thisMonthAppointments}
-          icon={Calendar}
-          color="purple"
-          trend={{ value: '+15.7%', isPositive: true }}
-        />
-        <StatCard
-          title="Ingresos Totales"
-          value={`€${totalRevenue.toLocaleString()}`}
-          icon={DollarSign}
-          color="orange"
-          trend={{ value: '+23.1%', isPositive: true }}
-        />
-      </div>
+    <div className="space-y-8">
+      <section className="relative overflow-hidden rounded-[32px] border border-blue-100/80 bg-gradient-to-br from-white via-blue-50 to-indigo-100 p-8 shadow-[0_24px_80px_rgba(37,99,235,0.12)]">
+        <div className="absolute -right-24 -top-20 h-60 w-60 rounded-full bg-blue-200/40 blur-3xl" />
+        <div className="absolute -left-16 bottom-0 h-44 w-44 rounded-full bg-cyan-200/40 blur-3xl" />
+        <div className="relative flex flex-col gap-8 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <span className="inline-flex items-center rounded-full border border-blue-200 bg-white/80 px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm backdrop-blur">
+              Centro de control MediConnect
+            </span>
+            <h2 className="mt-5 text-3xl font-black tracking-tight text-slate-900 md:text-5xl">
+              Gestion transversal del aplicativo con control operativo y trazabilidad central.
+            </h2>
+            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
+              Supervisa usuarios, citas activas y medicos pendientes de revision en un mismo punto. La idea es que cada decision operativa se tome rapido y con contexto.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <ActionChip label="Gestionar usuarios" onClick={onGoToUsers} />
+              <ActionChip label="Revisar medicos" onClick={onGoToDoctorReview} />
+            </div>
+          </div>
 
-      {/* Charts Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Appointments by Specialty */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Citas por Especialidad</h3>
-          <div className="space-y-4">
-            {[
-              { specialty: 'Cardiología', count: 45, color: 'bg-blue-600' },
-              { specialty: 'Endocrinología', count: 38, color: 'bg-green-600' },
-              { specialty: 'Dermatología', count: 41, color: 'bg-purple-600' },
-              { specialty: 'Neumología', count: 32, color: 'bg-orange-600' },
-              { specialty: 'Medicina General', count: 52, color: 'bg-pink-600' },
-            ].map(item => (
-              <div key={item.specialty}>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm font-medium text-gray-900">{item.specialty}</span>
-                  <span className="text-sm text-gray-600">{item.count} citas</span>
+          <div className="grid gap-3 sm:grid-cols-3 lg:w-[430px]">
+            <AdminMiniCard
+              title="Pendientes"
+              value={pendingDoctors.length}
+              description="Medicos esperando aprobacion"
+            />
+            <AdminMiniCard
+              title="Citas activas"
+              value={metrics.upcoming}
+              description="Programadas o confirmadas"
+            />
+            <AdminMiniCard
+              title="Usuarios bloqueados"
+              value={metrics.blocked}
+              description="Requieren seguimiento"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard
+          icon={<Users className="h-5 w-5 text-blue-600" />}
+          label="Pacientes"
+          value={metrics.patients}
+          description="Usuarios con acceso al cuidado"
+        />
+        <MetricCard
+          icon={<Activity className="h-5 w-5 text-emerald-600" />}
+          label="Medicos"
+          value={metrics.doctors}
+          description="Perfiles profesionales cargados"
+        />
+        <MetricCard
+          icon={<CalendarDays className="h-5 w-5 text-indigo-600" />}
+          label="Citas"
+          value={appointments.length}
+          description="Registros visibles en la operacion"
+        />
+        <MetricCard
+          icon={<ShieldCheck className="h-5 w-5 text-sky-600" />}
+          label="Revision"
+          value={pendingDoctors.length}
+          description="Solicitudes por validar"
+        />
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.4fr_0.9fr]">
+        <div className="rounded-[28px] border border-slate-200/80 bg-white/95 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
+          <div className="flex items-center justify-between gap-4">
+            <div>
+              <h3 className="text-xl font-bold text-slate-900">Actividad reciente</h3>
+              <p className="mt-1 text-sm text-slate-500">Ultimas citas registradas en el sistema.</p>
+            </div>
+            <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
+              Tiempo real
+            </span>
+          </div>
+
+          <div className="mt-6 space-y-4">
+            {recentAppointments.length === 0 ? (
+              <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50/80 px-5 py-10 text-center text-sm text-slate-500">
+                Aun no hay citas recientes para mostrar.
+              </div>
+            ) : (
+              recentAppointments.map((appointment) => (
+                <div
+                  key={appointment.id}
+                  className="flex flex-col gap-4 rounded-3xl border border-slate-200/80 bg-slate-50/70 px-5 py-4 md:flex-row md:items-center md:justify-between"
+                >
+                  <div>
+                    <p className="text-sm font-semibold uppercase tracking-[0.18em] text-blue-600">
+                      {appointment.status?.replaceAll('_', ' ') || 'sin estado'}
+                    </p>
+                    <p className="mt-2 text-base font-semibold text-slate-900">
+                      Cita {appointment.id.slice(0, 8)}
+                    </p>
+                    <p className="mt-1 text-sm text-slate-500">
+                      {new Date(appointment.scheduledStartAt || Date.now()).toLocaleString('es-CO')}
+                    </p>
+                  </div>
+                  <div className="rounded-2xl bg-white px-4 py-3 text-sm text-slate-600 shadow-sm">
+                    Flujo listo para control operativo y trazabilidad.
+                  </div>
                 </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className={`h-full ${item.color}`}
-                    style={{ width: `${(item.count / 60) * 100}%` }}
-                  ></div>
-                </div>
-              </div>
-            ))}
+              ))
+            )}
           </div>
         </div>
 
-        {/* Revenue by Period */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <h3 className="text-lg font-bold text-gray-900 mb-4">Ingresos Mensuales</h3>
-          <div className="space-y-3">
-            {[
-              { month: 'Enero', amount: 8500 },
-              { month: 'Febrero', amount: 9200 },
-              { month: 'Marzo', amount: 10500 },
-            ].map(item => (
-              <div key={item.month} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
-                <span className="font-medium text-gray-900">{item.month} 2026</span>
-                <span className="text-xl font-bold text-green-600">€{item.amount.toLocaleString()}</span>
-              </div>
-            ))}
-          </div>
-          <div className="mt-6 pt-6 border-t border-gray-200">
-            <div className="flex items-center justify-between">
-              <span className="font-medium text-gray-700">Total Trimestre</span>
-              <span className="text-2xl font-bold text-blue-600">€28,200</span>
-            </div>
-          </div>
-        </div>
-      </div>
+        <div className="rounded-[28px] border border-slate-200/80 bg-white/95 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
+          <h3 className="text-xl font-bold text-slate-900">Prioridades del dia</h3>
+          <p className="mt-1 text-sm text-slate-500">Acciones sugeridas para mantener la operacion estable.</p>
 
-      {/* Recent Activity */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Actividad Reciente</h3>
-        <div className="space-y-3">
-          {[
-            { type: 'new_patient', message: 'Nuevo paciente registrado: Isabel Torres', time: '10 min' },
-            { type: 'appointment', message: 'Cita completada: María González con Dr. Ramírez', time: '25 min' },
-            { type: 'payment', message: 'Pago recibido: €80 de Juan Martínez', time: '1 hora' },
-            { type: 'new_doctor', message: 'Nuevo médico registrado: Dr. Roberto Silva', time: '2 horas' },
-          ].map((activity, idx) => (
-            <div key={idx} className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg">
-              <div className={`w-2 h-2 rounded-full mt-2 ${
-                activity.type === 'payment' ? 'bg-green-500' :
-                activity.type === 'new_patient' ? 'bg-blue-500' :
-                activity.type === 'appointment' ? 'bg-purple-500' :
-                'bg-orange-500'
-              }`}></div>
-              <div className="flex-1">
-                <p className="text-sm text-gray-900">{activity.message}</p>
-                <p className="text-xs text-gray-500 mt-1">Hace {activity.time}</p>
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* User Growth */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-white">
-        <div className="flex items-center justify-between">
-          <div>
-            <h3 className="text-2xl font-bold mb-2">Crecimiento de Usuarios</h3>
-            <p className="text-blue-100 mb-6">Últimos 30 días</p>
-            <div className="grid grid-cols-3 gap-8">
-              <div>
-                <p className="text-blue-100 text-sm mb-1">Nuevos Pacientes</p>
-                <p className="text-4xl font-bold">+24</p>
-              </div>
-              <div>
-                <p className="text-blue-100 text-sm mb-1">Nuevos Médicos</p>
-                <p className="text-4xl font-bold">+3</p>
-              </div>
-              <div>
-                <p className="text-blue-100 text-sm mb-1">Tasa Crecimiento</p>
-                <p className="text-4xl font-bold">+15%</p>
-              </div>
-            </div>
+          <div className="mt-6 space-y-4">
+            <PriorityCard
+              title="Aprobar medicos pendientes"
+              description="Revisa documentos cargados para habilitar nuevos especialistas visibles al paciente."
+              onClick={onGoToDoctorReview}
+            />
+            <PriorityCard
+              title="Monitorear citas proximas"
+              description="Asegura que las consultas programadas mantengan continuidad y buena experiencia."
+              onClick={onGoToUsers}
+            />
+            <PriorityCard
+              title="Revisar usuarios bloqueados"
+              description="Detecta cuentas con incidencias y confirma si corresponde reactivar o mantener restriccion."
+              onClick={onGoToUsers}
+            />
           </div>
-          <TrendingUp className="w-32 h-32 text-white opacity-20" />
         </div>
-      </div>
+      </section>
     </div>
+  );
+}
+
+function ActionChip({ label, onClick }: { label: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="inline-flex items-center rounded-full bg-white/85 px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm transition hover:bg-white">
+      {label}
+    </button>
+  );
+}
+
+function MetricCard({
+  icon,
+  label,
+  value,
+  description
+}: {
+  icon: ReactNode;
+  label: string;
+  value: number;
+  description: string;
+}) {
+  return (
+    <article className="rounded-[28px] border border-slate-200/80 bg-white/95 p-5 shadow-[0_18px_60px_rgba(15,23,42,0.07)]">
+      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-slate-50">
+        {icon}
+      </div>
+      <p className="mt-5 text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">{label}</p>
+      <p className="mt-2 text-3xl font-black text-slate-900">{value}</p>
+      <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
+    </article>
+  );
+}
+
+function AdminMiniCard({
+  title,
+  value,
+  description
+}: {
+  title: string;
+  value: number;
+  description: string;
+}) {
+  return (
+    <div className="rounded-3xl border border-white/70 bg-white/75 px-4 py-4 shadow-[0_16px_40px_rgba(37,99,235,0.1)] backdrop-blur">
+      <p className="text-sm font-semibold uppercase tracking-[0.2em] text-slate-500">{title}</p>
+      <p className="mt-3 text-3xl font-black text-slate-900">{value}</p>
+      <p className="mt-2 text-sm leading-6 text-slate-500">{description}</p>
+    </div>
+  );
+}
+
+function PriorityCard({ title, description, onClick }: { title: string; description: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="rounded-3xl border border-blue-100 bg-gradient-to-br from-blue-50 via-white to-white px-5 py-5 text-left">
+      <p className="text-base font-semibold text-slate-900">{title}</p>
+      <p className="mt-2 text-sm leading-6 text-slate-600">{description}</p>
+    </button>
   );
 }

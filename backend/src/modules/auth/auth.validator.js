@@ -40,12 +40,21 @@ function validateRegister(payload) {
       'documentNumber',
       'medicalLicenseNumber',
       'consultationFee',
-      'careMode',
-      'city'
+      'city',
+      'specialtyIds'
     ]);
 
-    if (!['virtual', 'presencial', 'hibrida'].includes(payload.profile.careMode)) {
-      throw new AppError('Invalid careMode', 400);
+    if (!Array.isArray(payload.profile.specialtyIds)) {
+      throw new AppError('specialtyIds must be an array', 400);
+    }
+
+    if (payload.profile.specialtyIds.length < 1 || payload.profile.specialtyIds.length > 2) {
+      throw new AppError('A doctor must register between one and two specialties', 400);
+    }
+
+    const uniqueSpecialtyIds = new Set(payload.profile.specialtyIds);
+    if (uniqueSpecialtyIds.size !== payload.profile.specialtyIds.length) {
+      throw new AppError('Doctor specialties cannot be duplicated', 400);
     }
   }
 

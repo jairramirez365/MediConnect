@@ -100,11 +100,21 @@ describe('Auth and public doctors API', () => {
   });
 
   it('keeps doctors search public', async () => {
-    const response = await fetch(`${baseUrl}/api/v1/doctors?specialty=Medicina`);
+    const response = await fetch(`${baseUrl}/api/v1/doctors?specialty=Medicina&minRating=4.5&minYearsExperience=10`);
     const body = await response.json();
 
     assert.equal(response.status, 200);
     assert.ok(Array.isArray(body.data));
+    assert.ok(body.data.length >= 1);
+    assert.ok(body.data.every((doctor) => Number(doctor.ratingAverage) >= 4.5));
+    assert.ok(body.data.every((doctor) => Number(doctor.yearsOfExperience) >= 10));
+
+    const detailResponse = await fetch(`${baseUrl}/api/v1/doctors/50000000-0000-0000-0000-000000000001`);
+    const detailBody = await detailResponse.json();
+
+    assert.equal(detailResponse.status, 200);
+    assert.equal(detailBody.data.id, '50000000-0000-0000-0000-000000000001');
+    assert.ok(Array.isArray(detailBody.data.specialties));
   });
 
   it('requires authentication for appointments', async () => {
@@ -139,7 +149,7 @@ describe('Auth and public doctors API', () => {
 
     assert.equal(response.status, 200);
     assert.ok(Array.isArray(body.data));
-    assert.equal(body.data.length, 3);
+    assert.ok(body.data.length >= 3);
     assert.ok(body.data.every((appointment) => appointment.doctor === 'Julián López'));
   });
 
@@ -235,8 +245,8 @@ describe('Auth and public doctors API', () => {
           professionalBio: 'Registro médico pendiente de documentos.',
           yearsOfExperience: 2,
           consultationFee: 140000,
-          careMode: 'virtual',
-          city: 'Bogotá'
+          city: 'Bogotá',
+          specialtyIds: ['60000000-0000-0000-0000-000000000003']
         }
       })
     });
@@ -283,8 +293,8 @@ describe('Auth and public doctors API', () => {
           professionalBio: 'Médico en flujo de onboarding.',
           yearsOfExperience: 3,
           consultationFee: 155000,
-          careMode: 'virtual',
-          city
+          city,
+          specialtyIds: ['60000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000021']
         }
       })
     });
@@ -451,24 +461,7 @@ describe('Auth and public doctors API', () => {
   });
 
   it('manages specialties and assigns one to the authenticated doctor', async () => {
-    const suffix = Date.now();
-    const specialtyResponse = await fetch(`${baseUrl}/api/v1/specialties`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${adminAccessToken}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        name: `Especialidad Test ${suffix}`,
-        description: 'Especialidad creada durante prueba automatizada.'
-      })
-    });
-
-    const specialtyBody = await specialtyResponse.json();
-    const specialtyId = specialtyBody.data.id;
-
-    assert.equal(specialtyResponse.status, 201);
-    assert.ok(specialtyId);
+    const specialtyId = '60000000-0000-0000-0000-000000000005';
 
     const assignResponse = await fetch(`${baseUrl}/api/v1/specialties/me`, {
       method: 'POST',

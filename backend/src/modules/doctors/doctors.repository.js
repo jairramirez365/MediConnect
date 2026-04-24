@@ -12,7 +12,26 @@ async function searchDoctors(filters) {
 
   if (filters.specialty) {
     values.push(`%${filters.specialty}%`);
-    conditions.push(`e.nombre ILIKE $${values.length}`);
+    conditions.push(`
+      EXISTS (
+        SELECT 1
+        FROM medico_especialidad mef
+        INNER JOIN especialidad ef ON ef.id = mef.especialidad_id AND ef.deleted_at IS NULL
+        WHERE mef.medico_id = pm.id
+          AND mef.deleted_at IS NULL
+          AND ef.nombre ILIKE $${values.length}
+      )
+    `);
+  }
+
+  if (filters.minRating) {
+    values.push(Number(filters.minRating));
+    conditions.push(`pm.promedio_calificacion >= $${values.length}`);
+  }
+
+  if (filters.minYearsExperience) {
+    values.push(Number(filters.minYearsExperience));
+    conditions.push(`pm.anos_experiencia >= $${values.length}`);
   }
 
   const limit = filters.limit || 20;
@@ -31,6 +50,8 @@ async function searchDoctors(filters) {
       pm.modalidad_atencion AS "careMode",
       pm.valor_consulta AS "consultationFee",
       pm.promedio_calificacion AS "ratingAverage",
+      pm.anos_experiencia AS "yearsOfExperience",
+      pm.biografia_profesional AS "professionalBio",
       ARRAY_REMOVE(ARRAY_AGG(DISTINCT e.nombre), NULL) AS specialties,
       COUNT(*) OVER()::int AS total
     FROM perfil_medico pm
@@ -38,7 +59,7 @@ async function searchDoctors(filters) {
     LEFT JOIN especialidad e ON e.id = me.especialidad_id AND e.deleted_at IS NULL
     WHERE ${conditions.join(' AND ')}
     GROUP BY pm.id
-    ORDER BY pm.promedio_calificacion DESC, pm.apellidos ASC
+    ORDER BY pm.promedio_calificacion DESC, pm.anos_experiencia DESC, pm.apellidos ASC
     LIMIT $${limitParam}
     OFFSET $${offsetParam}
   `;
@@ -48,6 +69,36 @@ async function searchDoctors(filters) {
     rows: result.rows.map(({ total, ...row }) => row),
     total: result.rows[0]?.total || 0
   };
+}
+
+async function findPublicDoctorById(doctorId) {
+  const result = await query(
+    `
+      SELECT
+        pm.id,
+        pm.nombres,
+        pm.apellidos,
+        pm.ciudad,
+        pm.modalidad_atencion AS "careMode",
+        pm.valor_consulta AS "consultationFee",
+        pm.promedio_calificacion AS "ratingAverage",
+        pm.cantidad_calificaciones AS "ratingsCount",
+        pm.anos_experiencia AS "yearsOfExperience",
+        pm.biografia_profesional AS "professionalBio",
+        ARRAY_REMOVE(ARRAY_AGG(DISTINCT e.nombre), NULL) AS specialties
+      FROM perfil_medico pm
+      LEFT JOIN medico_especialidad me ON me.medico_id = pm.id AND me.deleted_at IS NULL
+      LEFT JOIN especialidad e ON e.id = me.especialidad_id AND e.deleted_at IS NULL
+      WHERE pm.id = $1
+        AND pm.estado_validacion = 'activo'
+        AND pm.deleted_at IS NULL
+      GROUP BY pm.id
+      LIMIT 1
+    `,
+    [doctorId]
+  );
+
+  return result.rows[0] || null;
 }
 
 async function findDoctorProfileByUserId(userId) {
@@ -203,6 +254,26 @@ async function getDocumentReviewSummary(doctorId) {
   return result.rows[0];
 }
 
+async function approvePendingDocumentsForDoctor(doctorId, adminProfileId) {
+  const result = await query(
+    `
+      UPDATE documento_medico
+      SET
+        estado_revision = 'aprobado',
+        administrador_revisor_id = $2,
+        fecha_revision = COALESCE(fecha_revision, NOW()),
+        observacion_revision = COALESCE(observacion_revision, 'Aprobado desde panel administrativo')
+      WHERE medico_id = $1
+        AND deleted_at IS NULL
+        AND estado_revision = 'en_revision'
+      RETURNING id
+    `,
+    [doctorId, adminProfileId]
+  );
+
+  return result.rowCount;
+}
+
 async function approveDoctor(doctorId, adminProfileId) {
   return withTransaction(async (client) => {
     const result = await client.query(
@@ -300,6 +371,8 @@ module.exports = {
   createMedicalDocument,
   findAdminProfileByUserId,
   findDoctorProfileByUserId,
+  findPublicDoctorById,
+  approvePendingDocumentsForDoctor,
   getDocumentReviewSummary,
   listDoctorsPendingReview,
   rejectDoctor,

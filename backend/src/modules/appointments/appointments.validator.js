@@ -65,7 +65,16 @@ function validateStatusUpdate(payload) {
   }
 }
 
+function validateCommissionAgentChatResponse(payload) {
+  requireFields(payload, ['action']);
+
+  if (!['accept', 'reject'].includes(payload.action)) {
+    throw new AppError('Invalid action for commission agent chat response', 400);
+  }
+}
+
 module.exports = {
+  validateCommissionAgentChatResponse,
   validateCreateAppointment,
   validateStatusUpdate
 };

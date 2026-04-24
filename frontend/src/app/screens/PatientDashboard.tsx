@@ -1,147 +1,260 @@
-import { Calendar, FileText, CreditCard, Users, Clock, Video } from 'lucide-react';
-import { StatCard } from '../components/StatCard';
-import { appointments, getAppointmentsByPatientId, getDoctorById, payments } from '../data/mockData';
+import {
+  Calendar,
+  ChevronRight,
+  Clock3,
+  FileText,
+  HeartPulse,
+  Search,
+  ShieldCheck,
+  Sparkles,
+  Stethoscope,
+  Wallet
+} from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { api } from '../../services/api';
+import { useAuth } from '../../store/AuthContext';
+import { EmptyState, ErrorState, LoadingState } from '../components/AsyncState';
+import { StatusBadge } from '../components/StatusBadge';
 
-export function PatientDashboard() {
-  const currentPatient = 'p1'; // María González
-  const patientAppointments = getAppointmentsByPatientId(currentPatient);
-  const upcomingAppointments = patientAppointments.filter(a => a.status !== 'completed' && a.status !== 'cancelled');
-  const completedAppointments = patientAppointments.filter(a => a.status === 'completed');
+type PatientDashboardProps = {
+  onGoToSearchDoctors: () => void;
+  onGoToBookAppointment: () => void;
+  onGoToHistory: () => void;
+  onGoToAppointments: () => void;
+};
+
+export function PatientDashboard({
+  onGoToSearchDoctors,
+  onGoToBookAppointment,
+  onGoToHistory,
+  onGoToAppointments
+}: PatientDashboardProps) {
+  const { profile } = useAuth();
+  const [appointments, setAppointments] = useState<any[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    async function loadAppointments() {
+      try {
+        const response = await api.appointments({ limit: 12 });
+        setAppointments(response.data || []);
+      } catch (err) {
+        setError(err instanceof Error ? err.message : 'No fue posible cargar tu inicio.');
+      } finally {
+        setIsLoading(false);
+      }
+    }
+
+    loadAppointments();
+  }, []);
+
+  const upcomingAppointments = useMemo(
+    () => appointments.filter((appointment) => ['pendiente_confirmacion', 'confirmada'].includes(appointment.status)),
+    [appointments]
+  );
+  const completedAppointments = useMemo(
+    () => appointments.filter((appointment) => appointment.status === 'completada'),
+    [appointments]
+  );
+  const totalConsultationValue = useMemo(
+    () => completedAppointments.reduce((acc, appointment) => acc + Number(appointment.consultationFee || 0), 0),
+    [completedAppointments]
+  );
+  const specialistsConsulted = useMemo(
+    () => new Set(completedAppointments.map((appointment) => appointment.doctorId)).size,
+    [completedAppointments]
+  );
+
+  if (isLoading) return <LoadingState label="Cargando tu inicio..." />;
+  if (error) return <ErrorState message={error} />;
+
+  const patientName = profile?.nombres || 'Paciente';
+  const nextAppointment = upcomingAppointments[0];
 
   return (
     <div className="space-y-6">
-      {/* Welcome Banner */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-8 text-white">
-        <h1 className="text-3xl font-bold mb-2">¡Bienvenida, María!</h1>
-        <p className="text-blue-100">Tu salud es nuestra prioridad. Aquí está un resumen de tu actividad médica.</p>
-      </div>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <StatCard
-          title="Próximas Citas"
-          value={upcomingAppointments.length}
-          icon={Calendar}
-          color="blue"
-        />
-        <StatCard
-          title="Citas Completadas"
-          value={completedAppointments.length}
-          icon={FileText}
-          color="green"
-        />
-        <StatCard
-          title="Médicos Consultados"
-          value={new Set(patientAppointments.map(a => a.doctorId)).size}
-          icon={Users}
-          color="purple"
-        />
-        <StatCard
-          title="Pagos Realizados"
-          value={`€${payments.filter(p => p.patientId === currentPatient).reduce((sum, p) => sum + p.amount, 0)}`}
-          icon={CreditCard}
-          color="orange"
-        />
-      </div>
-
-      {/* Main Content */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Upcoming Appointments */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Próximas Citas</h3>
-            <button className="text-blue-600 text-sm font-medium hover:text-blue-700">Ver todas</button>
+      <section className="rounded-[32px] border border-white/80 bg-[linear-gradient(135deg,_#1d4ed8_0%,_#60a5fa_60%,_#bfdbfe_100%)] p-6 text-white shadow-[0_28px_80px_rgba(37,99,235,0.22)] md:p-8">
+        <div className="grid items-center gap-6 lg:grid-cols-[1.1fr_0.9fr]">
+          <div>
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/16 px-4 py-2 text-sm font-semibold text-white/95 backdrop-blur">
+              <ShieldCheck className="h-4 w-4" />
+              Tu espacio personal de salud
+            </div>
+            <h1 className="mt-5 text-4xl font-black tracking-[-0.05em] md:text-5xl">Hola, {patientName}</h1>
+            <p className="mt-4 max-w-2xl text-base leading-8 text-blue-50 md:text-lg">
+              Desde aqui puedes revisar tu siguiente consulta, entender tu historial y avanzar directo a la accion que necesites.
+            </p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <ActionChip icon={Calendar} label="Agenda tu proxima cita" onClick={onGoToBookAppointment} />
+              <ActionChip icon={Search} label="Buscar medicos" onClick={onGoToSearchDoctors} />
+              <ActionChip icon={FileText} label="Ver historial" onClick={onGoToHistory} />
+            </div>
           </div>
-          <div className="space-y-3">
-            {upcomingAppointments.length > 0 ? (
-              upcomingAppointments.map(apt => {
-                const doctor = getDoctorById(apt.doctorId);
-                return (
-                  <div key={apt.id} className="p-4 border border-gray-200 rounded-lg hover:border-blue-300 transition-colors">
-                    <div className="flex items-center gap-3 mb-2">
-                      <div className="w-10 h-10 bg-gradient-to-br from-blue-500 to-purple-600 rounded-full flex items-center justify-center text-white font-bold">
-                        {doctor?.name.charAt(3)}
+
+          <div className="grid gap-4 sm:grid-cols-2">
+            <HeroMiniCard
+              icon={Clock3}
+              title="Proxima cita"
+              text={
+                nextAppointment
+                  ? new Date(nextAppointment.scheduledStartAt).toLocaleString('es-CO')
+                  : 'Agenda tu primera consulta'
+              }
+            />
+            <HeroMiniCard
+              icon={Wallet}
+              title="Valor acumulado"
+              text={`$${totalConsultationValue.toLocaleString('es-CO')}`}
+            />
+            <HeroMiniCard
+              icon={HeartPulse}
+              title="Consultas completadas"
+              text={`${completedAppointments.length} finalizadas`}
+            />
+            <HeroMiniCard
+              icon={Sparkles}
+              title="Especialistas consultados"
+              text={`${specialistsConsulted} profesionales`}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="grid gap-6 xl:grid-cols-[1.05fr_0.95fr]">
+        <div className="space-y-6">
+          <div className="grid gap-4 md:grid-cols-3">
+            <MetricCard title="Proximas citas" value={upcomingAppointments.length} subtitle="Listas para seguimiento" icon={Calendar} />
+            <MetricCard title="Consultas completadas" value={completedAppointments.length} subtitle="Con soporte clinico" icon={FileText} />
+            <MetricCard title="Especialistas consultados" value={specialistsConsulted} subtitle="Historial enriquecido" icon={Stethoscope} />
+          </div>
+
+          <div className="rounded-[28px] border border-white/80 bg-white/90 p-6 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
+            <div className="mb-5 flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-950">Tu proxima cita</h2>
+                <p className="mt-1 text-sm text-slate-500">Todo lo que viene en tu agenda, sin perder contexto.</p>
+              </div>
+              <button
+                onClick={onGoToAppointments}
+                className="inline-flex items-center gap-2 rounded-2xl border border-blue-100 bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+              >
+                Ver todas
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+
+            {upcomingAppointments.length === 0 ? (
+              <EmptyState title="Sin citas programadas" description="Explora especialistas y agenda tu siguiente consulta en pocos pasos." />
+            ) : (
+              <div className="space-y-4">
+                {upcomingAppointments.slice(0, 1).map((appointment) => (
+                  <div key={appointment.id} className="rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,_#ffffff,_#f8fbff)] p-5">
+                    <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                      <div>
+                        <p className="text-lg font-bold text-slate-950">{appointment.doctor}</p>
+                        <p className="mt-1 text-sm text-slate-500">{appointment.reason}</p>
+                        <div className="mt-3 flex flex-wrap items-center gap-3 text-sm text-slate-600">
+                          <span>{new Date(appointment.scheduledStartAt).toLocaleDateString('es-CO')}</span>
+                          <span>{new Date(appointment.scheduledStartAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}</span>
+                          <span className="capitalize">{appointment.careChannel}</span>
+                        </div>
                       </div>
-                      <div className="flex-1">
-                        <p className="font-medium text-gray-900">{doctor?.name}</p>
-                        <p className="text-sm text-gray-600">{doctor?.specialty}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center justify-between text-sm">
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Calendar className="w-4 h-4" />
-                        <span>{apt.date}</span>
-                      </div>
-                      <div className="flex items-center gap-2 text-gray-600">
-                        <Clock className="w-4 h-4" />
-                        <span>{apt.time}</span>
-                      </div>
-                    </div>
-                    {apt.type === 'teleconsulta' && (
-                      <div className="mt-3">
-                        <button className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
-                          <Video className="w-4 h-4" />
-                          Unirse a Teleconsulta
+                      <div className="flex items-center gap-3">
+                        <StatusBadge status={appointment.status} />
+                        <button
+                          onClick={onGoToAppointments}
+                          className="inline-flex items-center gap-2 rounded-2xl bg-blue-50 px-4 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+                        >
+                          Ver detalle
+                          <ChevronRight className="h-4 w-4" />
                         </button>
                       </div>
-                    )}
+                    </div>
                   </div>
-                );
-              })
-            ) : (
-              <div className="text-center py-8 text-gray-500">
-                <Calendar className="w-12 h-12 mx-auto mb-2 opacity-50" />
-                <p>No tienes citas programadas</p>
+                ))}
               </div>
             )}
           </div>
         </div>
 
-        {/* Recent Activity */}
-        <div className="bg-white rounded-xl border border-gray-200 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="text-lg font-bold text-gray-900">Actividad Reciente</h3>
-          </div>
-          <div className="space-y-4">
-            {completedAppointments.slice(0, 3).map(apt => {
-              const doctor = getDoctorById(apt.doctorId);
-              return (
-                <div key={apt.id} className="flex items-start gap-3 pb-4 border-b border-gray-200 last:border-0">
-                  <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center">
-                    <FileText className="w-4 h-4 text-green-600" />
+        <div className="space-y-6">
+          <div className="rounded-[28px] border border-white/80 bg-white/90 p-6 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
+            <div className="flex items-center justify-between gap-4">
+              <div>
+                <h2 className="text-2xl font-bold text-slate-950">Actividad reciente</h2>
+                <p className="mt-1 text-sm text-slate-500">Tus citas completadas alimentan el seguimiento clinico.</p>
+              </div>
+              <button
+                onClick={onGoToHistory}
+                className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:text-blue-700"
+              >
+                Abrir historia
+                <ChevronRight className="h-4 w-4" />
+              </button>
+            </div>
+            <div className="mt-5 space-y-4">
+              {completedAppointments.length === 0 ? (
+                <EmptyState title="Aun no hay consultas completadas" description="Cuando finalices tus citas, este resumen se ira enriqueciendo automaticamente." />
+              ) : (
+                completedAppointments.slice(0, 3).map((appointment) => (
+                  <div key={appointment.id} className="flex gap-3 rounded-[22px] bg-slate-50 p-4">
+                    <div className="mt-1 rounded-2xl bg-blue-100 p-3 text-blue-700">
+                      <Calendar className="h-5 w-5" />
+                    </div>
+                    <div className="flex-1">
+                      <p className="font-semibold text-slate-900">{appointment.doctor}</p>
+                      <p className="mt-1 text-sm text-slate-600">
+                        {appointment.doctorSpecialties?.join(', ') || 'Especialidad disponible en historia clinica'}
+                      </p>
+                      <p className="mt-2 text-xs text-slate-500">{new Date(appointment.scheduledStartAt).toLocaleString('es-CO')}</p>
+                    </div>
                   </div>
-                  <div className="flex-1">
-                    <p className="text-sm font-medium text-gray-900">Consulta con {doctor?.name}</p>
-                    <p className="text-sm text-gray-600">{apt.diagnosis}</p>
-                    <p className="text-xs text-gray-500 mt-1">{apt.date}</p>
-                  </div>
-                </div>
-              );
-            })}
+                ))
+              )}
+            </div>
           </div>
         </div>
-      </div>
+      </section>
+    </div>
+  );
+}
 
-      {/* Quick Actions */}
-      <div className="bg-white rounded-xl border border-gray-200 p-6">
-        <h3 className="text-lg font-bold text-gray-900 mb-4">Acciones Rápidas</h3>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <button className="flex flex-col items-center gap-2 p-4 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors">
-            <Users className="w-6 h-6" />
-            <span className="font-medium text-sm">Buscar Médicos</span>
-          </button>
-          <button className="flex flex-col items-center gap-2 p-4 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors">
-            <Calendar className="w-6 h-6" />
-            <span className="font-medium text-sm">Agendar Cita</span>
-          </button>
-          <button className="flex flex-col items-center gap-2 p-4 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors">
-            <FileText className="w-6 h-6" />
-            <span className="font-medium text-sm">Mi Historial</span>
-          </button>
-          <button className="flex flex-col items-center gap-2 p-4 bg-orange-50 text-orange-700 rounded-lg hover:bg-orange-100 transition-colors">
-            <CreditCard className="w-6 h-6" />
-            <span className="font-medium text-sm">Mis Pagos</span>
-          </button>
+function ActionChip({ icon: Icon, label, onClick }: any) {
+  return (
+    <button
+      onClick={onClick}
+      className="inline-flex items-center gap-2 rounded-full bg-white/16 px-4 py-2 text-sm font-medium text-white/95 transition hover:bg-white/24"
+    >
+      <Icon className="h-4 w-4" />
+      {label}
+    </button>
+  );
+}
+
+function HeroMiniCard({ icon: Icon, title, text }: any) {
+  return (
+    <div className="rounded-[24px] border border-white/18 bg-white/16 p-4 backdrop-blur">
+      <div className="w-fit rounded-2xl bg-white/16 p-3 text-white">
+        <Icon className="h-5 w-5" />
+      </div>
+      <p className="mt-4 text-sm text-blue-50">{title}</p>
+      <p className="mt-1 text-lg font-bold text-white">{text}</p>
+    </div>
+  );
+}
+
+function MetricCard({ title, value, subtitle, icon: Icon }: any) {
+  return (
+    <div className="rounded-[26px] border border-white/80 bg-white/90 p-5 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
+      <div className="flex items-center justify-between">
+        <div>
+          <p className="text-sm text-slate-500">{title}</p>
+          <p className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">{value}</p>
+          <p className="mt-2 text-sm text-slate-500">{subtitle}</p>
+        </div>
+        <div className="rounded-2xl bg-blue-50 p-3 text-blue-700">
+          <Icon className="h-6 w-6" />
         </div>
       </div>
     </div>

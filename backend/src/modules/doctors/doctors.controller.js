@@ -4,11 +4,21 @@ async function searchDoctors(req, res) {
   const result = await doctorsService.searchDoctors({
     city: req.query.city,
     specialty: req.query.specialty,
+    minRating: req.query.minRating,
+    minYearsExperience: req.query.minYearsExperience,
     page: req.query.page,
     limit: req.query.limit
   });
 
   res.status(200).json(result);
+}
+
+async function getPublicDoctorProfile(req, res) {
+  const doctor = await doctorsService.getPublicDoctorProfile(req.params.doctorId);
+
+  res.status(200).json({
+    data: doctor
+  });
 }
 
 async function uploadMedicalDocument(req, res) {
@@ -62,6 +72,7 @@ async function rejectDoctor(req, res) {
 
 module.exports = {
   approveDoctor,
+  getPublicDoctorProfile,
   listDoctorsPendingReview,
   rejectDoctor,
   reviewMedicalDocument,

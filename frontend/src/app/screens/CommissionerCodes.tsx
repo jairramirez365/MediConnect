@@ -1,162 +1,161 @@
-import { Code, Plus, Copy, TrendingUp, Users, DollarSign } from 'lucide-react';
-import { useState } from 'react';
-import { referralCodes } from '../data/mockData';
+import { CheckCircle2, Copy, Plus, Search, Share2, Users } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { api } from '../../services/api';
+import { EmptyState, ErrorState, LoadingState } from '../components/AsyncState';
 
-export function CommissionerCodes() {
-  const [showModal, setShowModal] = useState(false);
+export function CommissionerCodes({ onGoToPatients }: { onGoToPatients: () => void }) {
+  const [codes, setCodes] = useState<any[]>([]);
+  const [filters, setFilters] = useState({ search: '', status: '' });
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [isLoading, setIsLoading] = useState(true);
+
+  async function loadCodes() {
+    setIsLoading(true);
+    setError('');
+
+    try {
+      const response = await api.commissionerCodes(filters);
+      setCodes(response.data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No fue posible cargar los codigos.');
+    } finally {
+      setIsLoading(false);
+    }
+  }
+
+  async function createCode() {
+    try {
+      const response = await api.createCommissionerCode();
+      setMessage(`Nuevo codigo generado: ${response.data.code}`);
+      await loadCodes();
+    } catch (err) {
+      setMessage(err instanceof Error ? err.message : 'No fue posible generar el codigo.');
+    }
+  }
+
+  async function copyCode(code: string) {
+    await navigator.clipboard.writeText(code);
+    setMessage(`Codigo ${code} copiado al portapapeles.`);
+  }
+
+  useEffect(() => {
+    loadCodes();
+  }, []);
+
+  const totalGenerated = useMemo(
+    () => codes.reduce((sum, code) => sum + Number(code.generatedCommission || 0), 0),
+    [codes]
+  );
+
+  if (isLoading) return <LoadingState label="Cargando codigos de referencia..." />;
+  if (error && !codes.length) return <ErrorState message={error} />;
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-900">Códigos de Referencia</h2>
-          <p className="text-gray-600 mt-1">Gestiona tus códigos y rastrea su uso</p>
+      <section className="rounded-[32px] border border-white/80 bg-[linear-gradient(135deg,_#0f4fcf_0%,_#60a5fa_60%,_#dbeafe_100%)] p-6 text-white shadow-[0_28px_80px_rgba(37,99,235,0.18)] md:p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div className="max-w-3xl">
+            <div className="inline-flex items-center gap-2 rounded-full bg-white/16 px-4 py-2 text-sm font-semibold text-white/95">
+              <CheckCircle2 className="h-4 w-4" />
+              Codigos de seguimiento reales
+            </div>
+            <h1 className="mt-5 text-4xl font-black tracking-[-0.05em] md:text-5xl">Codigos de referencia</h1>
+            <p className="mt-4 max-w-2xl text-base leading-8 text-blue-50 md:text-lg">
+              Cada codigo se genera con formato unico `C-######` y te permite vincular pacientes, citas y comisiones sobre datos reales.
+            </p>
+          </div>
+          <button onClick={createCode} className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 font-semibold text-blue-700 transition hover:bg-blue-50">
+            <Plus className="h-4 w-4" />
+            Generar codigo
+          </button>
         </div>
-        <button
-          onClick={() => setShowModal(true)}
-          className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700"
-        >
-          <Plus className="w-4 h-4" />
-          Generar Código
-        </button>
-      </div>
+      </section>
 
-      {/* Codes Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {referralCodes.map(code => {
-          const totalEarned = code.usageCount * code.commissionRate;
+      {message && <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">{message}</div>}
 
-          return (
-            <div key={code.id} className="bg-white rounded-xl border border-gray-200 p-6 hover:shadow-lg transition-shadow">
-              {/* Code Header */}
-              <div className="flex items-center justify-between mb-6">
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                    <Code className="w-6 h-6 text-blue-600" />
-                  </div>
-                  <div>
-                    <p className="font-mono text-xl font-bold text-blue-600">{code.code}</p>
-                    <p className="text-sm text-gray-600">Creado: {code.createdDate}</p>
-                  </div>
+      <section className="rounded-[28px] border border-white/80 bg-white/92 p-6 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
+        <div className="grid gap-4 md:grid-cols-[1fr_220px_auto]">
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-slate-700">Buscar codigo</span>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
+              <input value={filters.search} onChange={(event) => setFilters((current) => ({ ...current, search: event.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-slate-50/70 py-3 pl-11 pr-4 text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100" />
+            </div>
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-sm font-medium text-slate-700">Estado</span>
+            <select value={filters.status} onChange={(event) => setFilters((current) => ({ ...current, status: event.target.value }))} className="w-full rounded-2xl border border-slate-200 bg-slate-50/70 px-4 py-3 text-slate-700 outline-none focus:border-blue-400 focus:ring-2 focus:ring-blue-100">
+              <option value="">Todos</option>
+              <option value="active">Activos</option>
+              <option value="inactive">Inactivos</option>
+            </select>
+          </label>
+          <button onClick={loadCodes} className="self-end rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700">Aplicar filtros</button>
+        </div>
+      </section>
+
+      <section className="grid gap-4 md:grid-cols-3">
+        <MetricCard title="Codigos visibles" value={codes.length} />
+        <MetricCard title="Pacientes vinculados" value={codes.reduce((sum, code) => sum + Number(code.linkedPatients || 0), 0)} />
+        <MetricCard title="Comision generada" value={`$${totalGenerated.toLocaleString('es-CO')}`} />
+      </section>
+
+      {codes.length === 0 ? (
+        <EmptyState title="Sin codigos para esos filtros" description="Genera tu primer codigo o ajusta los filtros para continuar." />
+      ) : (
+        <div className="grid gap-4 lg:grid-cols-2">
+          {codes.map((code) => (
+            <article key={code.id} className="rounded-[28px] border border-white/80 bg-white/92 p-6 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="font-mono text-2xl font-black text-blue-700">{code.code}</p>
+                  <p className="mt-2 text-sm text-slate-500">Expira: {code.expiresAt ? new Date(code.expiresAt).toLocaleDateString('es-CO') : 'Sin fecha'}</p>
                 </div>
-                <button className="p-2 hover:bg-gray-100 rounded-lg" title="Copiar código">
-                  <Copy className="w-5 h-5 text-gray-600" />
+                <span className={`rounded-full px-3 py-1 text-xs font-semibold ${code.isActive ? 'bg-emerald-50 text-emerald-700' : 'bg-slate-100 text-slate-600'}`}>
+                  {code.isActive ? 'Activo' : 'Inactivo'}
+                </span>
+              </div>
+              <div className="mt-5 grid gap-3 sm:grid-cols-3">
+                <StatBox label="Pacientes" value={code.linkedPatients} />
+                <StatBox label="Citas" value={code.appointmentsCount} />
+                <StatBox label="Comision" value={`$${Number(code.generatedCommission || 0).toLocaleString('es-CO')}`} />
+              </div>
+              <div className="mt-5 flex gap-3">
+                <button onClick={() => copyCode(code.code)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:text-blue-700">
+                  <Copy className="h-4 w-4" />
+                  Copiar
                 </button>
-              </div>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-4 mb-6">
-                <div className="text-center p-3 bg-blue-50 rounded-lg">
-                  <Users className="w-5 h-5 text-blue-600 mx-auto mb-1" />
-                  <p className="text-2xl font-bold text-gray-900">{code.usageCount}</p>
-                  <p className="text-xs text-gray-600">Usos</p>
-                </div>
-                <div className="text-center p-3 bg-green-50 rounded-lg">
-                  <TrendingUp className="w-5 h-5 text-green-600 mx-auto mb-1" />
-                  <p className="text-2xl font-bold text-gray-900">{code.commissionRate}%</p>
-                  <p className="text-xs text-gray-600">Comisión</p>
-                </div>
-                <div className="text-center p-3 bg-purple-50 rounded-lg">
-                  <DollarSign className="w-5 h-5 text-purple-600 mx-auto mb-1" />
-                  <p className="text-2xl font-bold text-gray-900">€{totalEarned}</p>
-                  <p className="text-xs text-gray-600">Generado</p>
-                </div>
-              </div>
-
-              {/* Progress Bar */}
-              <div>
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-sm text-gray-600">Rendimiento</span>
-                  <span className="text-sm font-medium text-gray-900">{code.usageCount} / 50 meta</span>
-                </div>
-                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
-                  <div
-                    className="h-full bg-gradient-to-r from-blue-600 to-purple-600"
-                    style={{ width: `${Math.min((code.usageCount / 50) * 100, 100)}%` }}
-                  ></div>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2 mt-4 pt-4 border-t border-gray-200">
-                <button className="flex-1 px-4 py-2 bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 text-sm">
-                  Ver Detalles
-                </button>
-                <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 text-sm">
+                <button onClick={() => navigator.clipboard.writeText(`Usa mi codigo ${code.code} en MediConnect`)} className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700">
+                  <Share2 className="h-4 w-4" />
                   Compartir
                 </button>
+                <button onClick={onGoToPatients} className="inline-flex items-center justify-center rounded-2xl bg-slate-900 px-4 py-3 text-white transition hover:bg-slate-800">
+                  <Users className="h-4 w-4" />
+                </button>
               </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {/* Info Card */}
-      <div className="bg-gradient-to-r from-blue-600 to-purple-600 rounded-xl p-6 text-white">
-        <h3 className="text-lg font-bold mb-2">¿Cómo funcionan los códigos de referencia?</h3>
-        <ul className="space-y-2 text-sm text-blue-100">
-          <li className="flex items-start gap-2">
-            <span>1.</span>
-            <span>Genera un código único para compartir con potenciales pacientes</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span>2.</span>
-            <span>Cuando un paciente usa tu código, se vincula automáticamente a ti</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span>3.</span>
-            <span>Ganas una comisión por cada consulta que realice el paciente</span>
-          </li>
-        </ul>
-      </div>
-
-      {/* Generate Code Modal */}
-      {showModal && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-xl max-w-md w-full p-6">
-            <h3 className="text-xl font-bold text-gray-900 mb-4">Generar Nuevo Código</h3>
-
-            <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Nombre del código (opcional)</label>
-                <input
-                  type="text"
-                  placeholder="ej: Campaña Marzo 2026"
-                  className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Tasa de comisión (%)</label>
-                <select className="w-full px-4 py-2 border border-gray-300 rounded-lg">
-                  <option value="10">10%</option>
-                  <option value="15">15%</option>
-                  <option value="20">20%</option>
-                </select>
-              </div>
-
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-gray-700">
-                  <span className="font-medium">Vista previa del código:</span>
-                  <span className="block font-mono text-lg text-blue-600 mt-2">COM-2026-003</span>
-                </p>
-              </div>
-            </div>
-
-            <div className="flex gap-3 mt-6">
-              <button className="flex-1 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700">
-                Generar Código
-              </button>
-              <button
-                onClick={() => setShowModal(false)}
-                className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
+            </article>
+          ))}
         </div>
       )}
+    </div>
+  );
+}
+
+function MetricCard({ title, value }: any) {
+  return (
+    <div className="rounded-[24px] border border-white/80 bg-white/92 p-5 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
+      <p className="text-sm text-slate-500">{title}</p>
+      <p className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">{value}</p>
+    </div>
+  );
+}
+
+function StatBox({ label, value }: any) {
+  return (
+    <div className="rounded-[20px] bg-slate-50/80 p-4">
+      <p className="text-xs uppercase tracking-[0.18em] text-slate-500">{label}</p>
+      <p className="mt-2 text-xl font-bold text-slate-900">{value}</p>
     </div>
   );
 }

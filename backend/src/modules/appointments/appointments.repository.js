@@ -93,6 +93,24 @@ async function findReferralCodeById(client, referralCodeId) {
   return result.rows[0] || null;
 }
 
+async function createNotification(client, { userId, appointmentId, type, message, scheduledAt, state = 'programada' }) {
+  await client.query(
+    `
+      INSERT INTO notificacion (
+        usuario_id,
+        cita_id,
+        tipo_notificacion,
+        canal,
+        mensaje,
+        estado,
+        fecha_programada_envio
+      )
+      VALUES ($1, $2, $3, 'interno', $4, $5, $6)
+    `,
+    [userId, appointmentId, type, message, state, scheduledAt]
+  );
+}
+
 async function hasOverlappingAppointment(client, doctorId, scheduledStartAt, scheduledEndAt) {
   const result = await client.query(
     `
@@ -152,10 +170,6 @@ async function createAppointment(payload) {
 
     if (payload.requiresCommissionAgentInChat && !payload.commissionAgentId) {
       return { type: 'commission_agent_required' };
-    }
-
-    if (payload.requiresCommissionAgentInChat && !patient.autorizo_participacion_comisionista_chat) {
-      return { type: 'patient_not_authorized_for_agent_chat' };
     }
 
     if (payload.referralCodeId) {
@@ -252,21 +266,23 @@ async function createAppointment(payload) {
     ];
 
     for (const notification of notifications) {
-      await client.query(
-        `
-          INSERT INTO notificacion (
-            usuario_id,
-            cita_id,
-            tipo_notificacion,
-            canal,
-            mensaje,
-            estado,
-            fecha_programada_envio
-          )
-          VALUES ($1, $2, $3, 'interno', $4, 'programada', $5)
-        `,
-        [notification.userId, appointment.id, notification.type, notification.message, notification.scheduledAt]
-      );
+      await createNotification(client, {
+        userId: notification.userId,
+        appointmentId: appointment.id,
+        type: notification.type,
+        message: notification.message,
+        scheduledAt: notification.scheduledAt
+      });
+    }
+
+    if (payload.requiresCommissionAgentInChat && commissionAgent) {
+      await createNotification(client, {
+        userId: patient.usuario_id,
+        appointmentId: appointment.id,
+        type: 'solicitud_participacion_comisionista_chat_pendiente',
+        message: 'Tu comisionista solicito acompanarte en el chat de esta consulta. Podras aceptarlo o rechazarlo antes de iniciar.',
+        scheduledAt: new Date(new Date(payload.scheduledStartAt).getTime() - 5 * 60 * 1000)
+      });
     }
 
     return {
@@ -310,6 +326,8 @@ async function listAppointments(filters) {
   const sql = `
     SELECT
       c.id,
+      c.paciente_id AS "patientId",
+      c.medico_id AS "doctorId",
       c.estado AS status,
       c.fecha_hora_inicio_programada AS "scheduledStartAt",
       c.fecha_hora_fin_programada AS "scheduledEndAt",
@@ -317,15 +335,45 @@ async function listAppointments(filters) {
       c.motivo_consulta AS reason,
       c.tipo_consulta AS "appointmentType",
       c.canal_atencion AS "careChannel",
+      c.requiere_comisionista_en_chat AS "requiresCommissionAgentInChat",
       c.valor_consulta AS "consultationFee",
       c.valor_multa_cancelacion AS "cancellationPenalty",
       c.fecha_limite_cancelacion_sin_multa AS "freeCancellationDeadline",
       CONCAT(pp.nombres, ' ', pp.apellidos) AS patient,
       CONCAT(pm.nombres, ' ', pm.apellidos) AS doctor,
+      specialties.specialties AS "doctorSpecialties",
+      chat_request.status AS "commissionAgentChatRequestStatus",
+      chat_request."scheduledAt" AS "commissionAgentChatRequestAt",
       COUNT(*) OVER()::int AS total
     FROM cita c
     INNER JOIN perfil_paciente pp ON pp.id = c.paciente_id
     INNER JOIN perfil_medico pm ON pm.id = c.medico_id
+    LEFT JOIN LATERAL (
+      SELECT ARRAY_REMOVE(ARRAY_AGG(DISTINCT e.nombre), NULL) AS specialties
+      FROM medico_especialidad me
+      INNER JOIN especialidad e ON e.id = me.especialidad_id AND e.deleted_at IS NULL
+      WHERE me.medico_id = c.medico_id
+        AND me.deleted_at IS NULL
+    ) specialties ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        CASE
+          WHEN n.tipo_notificacion = 'solicitud_participacion_comisionista_chat_aceptada' THEN 'aceptada'
+          WHEN n.tipo_notificacion = 'solicitud_participacion_comisionista_chat_rechazada' THEN 'rechazada'
+          ELSE 'pendiente_paciente'
+        END AS status,
+        n.fecha_programada_envio AS "scheduledAt"
+      FROM notificacion n
+      WHERE n.cita_id = c.id
+        AND n.deleted_at IS NULL
+        AND n.tipo_notificacion IN (
+          'solicitud_participacion_comisionista_chat_pendiente',
+          'solicitud_participacion_comisionista_chat_aceptada',
+          'solicitud_participacion_comisionista_chat_rechazada'
+        )
+      ORDER BY n.created_at DESC
+      LIMIT 1
+    ) chat_request ON TRUE
     WHERE ${conditions.join(' AND ')}
     ORDER BY c.fecha_hora_inicio_programada DESC
     LIMIT $${limitParam}
@@ -371,7 +419,8 @@ async function findAppointmentById(appointmentId) {
         c.estado AS status,
         c.fecha_hora_inicio_programada AS "scheduledStartAt",
         c.fecha_hora_fin_programada AS "scheduledEndAt",
-        c.valor_multa_cancelacion AS "cancellationPenalty"
+        c.valor_multa_cancelacion AS "cancellationPenalty",
+        c.requiere_comisionista_en_chat AS "requiresCommissionAgentInChat"
       FROM cita c
       INNER JOIN perfil_paciente pp ON pp.id = c.paciente_id
       INNER JOIN perfil_medico pm ON pm.id = c.medico_id
@@ -384,6 +433,136 @@ async function findAppointmentById(appointmentId) {
   );
 
   return result.rows[0] || null;
+}
+
+async function findAppointmentDetailById(appointmentId) {
+  const result = await query(
+    `
+      SELECT
+        c.id,
+        c.paciente_id AS "patientId",
+        c.medico_id AS "doctorId",
+        pp.usuario_id AS "patientUserId",
+        pm.usuario_id AS "doctorUserId",
+        c.comisionista_id AS "commissionAgentId",
+        pc.usuario_id AS "commissionAgentUserId",
+        c.estado AS status,
+        c.fecha_hora_inicio_programada AS "scheduledStartAt",
+        c.fecha_hora_fin_programada AS "scheduledEndAt",
+        c.zona_horaria AS "timeZone",
+        c.motivo_consulta AS reason,
+        c.tipo_consulta AS "appointmentType",
+        c.canal_atencion AS "careChannel",
+        c.requiere_comisionista_en_chat AS "requiresCommissionAgentInChat",
+        c.valor_consulta AS "consultationFee",
+        c.valor_multa_cancelacion AS "cancellationPenalty",
+        c.fecha_limite_cancelacion_sin_multa AS "freeCancellationDeadline",
+        CONCAT(pp.nombres, ' ', pp.apellidos) AS patient,
+        CONCAT(pm.nombres, ' ', pm.apellidos) AS doctor,
+        specialties.specialties AS "doctorSpecialties",
+        chat_request.status AS "commissionAgentChatRequestStatus",
+        chat_request."scheduledAt" AS "commissionAgentChatRequestAt",
+        note.id AS "clinicalNoteId",
+        note.subjetivo AS subjective,
+        note.objetivo AS objective,
+        note.analisis AS assessment,
+        note.plan AS plan,
+        note.created_at AS "clinicalNoteCreatedAt",
+        prescription.id AS "prescriptionId",
+        prescription.estado AS "prescriptionStatus",
+        prescription.instrucciones_generales AS "generalInstructions",
+        COALESCE(
+          json_agg(
+            DISTINCT jsonb_build_object(
+              'id', recipe_item.id,
+              'medication', recipe_item.medicamento,
+              'presentation', recipe_item.presentacion,
+              'dose', recipe_item.dosis,
+              'frequency', recipe_item.frecuencia,
+              'durationDays', recipe_item.duracion_dias,
+              'instructions', recipe_item.indicaciones
+            )
+          ) FILTER (WHERE recipe_item.id IS NOT NULL),
+          '[]'::json
+        ) AS "prescriptionItems",
+        rating.id AS "ratingId",
+        rating.puntaje AS score,
+        rating.comentario AS comment,
+        rating.estado AS "ratingStatus"
+      FROM cita c
+      INNER JOIN perfil_paciente pp ON pp.id = c.paciente_id
+      INNER JOIN perfil_medico pm ON pm.id = c.medico_id
+      LEFT JOIN perfil_comisionista pc ON pc.id = c.comisionista_id
+      LEFT JOIN LATERAL (
+        SELECT ARRAY_REMOVE(ARRAY_AGG(DISTINCT e.nombre), NULL) AS specialties
+        FROM medico_especialidad me
+        INNER JOIN especialidad e ON e.id = me.especialidad_id AND e.deleted_at IS NULL
+        WHERE me.medico_id = c.medico_id
+          AND me.deleted_at IS NULL
+      ) specialties ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT
+          CASE
+            WHEN n.tipo_notificacion = 'solicitud_participacion_comisionista_chat_aceptada' THEN 'aceptada'
+            WHEN n.tipo_notificacion = 'solicitud_participacion_comisionista_chat_rechazada' THEN 'rechazada'
+            ELSE 'pendiente_paciente'
+          END AS status,
+          n.fecha_programada_envio AS "scheduledAt"
+        FROM notificacion n
+        WHERE n.cita_id = c.id
+          AND n.deleted_at IS NULL
+          AND n.tipo_notificacion IN (
+            'solicitud_participacion_comisionista_chat_pendiente',
+            'solicitud_participacion_comisionista_chat_aceptada',
+            'solicitud_participacion_comisionista_chat_rechazada'
+          )
+        ORDER BY n.created_at DESC
+        LIMIT 1
+      ) chat_request ON TRUE
+      LEFT JOIN nota_clinica note ON note.cita_id = c.id AND note.deleted_at IS NULL
+      LEFT JOIN receta prescription ON prescription.cita_id = c.id AND prescription.deleted_at IS NULL
+      LEFT JOIN receta_item recipe_item ON recipe_item.receta_id = prescription.id AND recipe_item.deleted_at IS NULL
+      LEFT JOIN calificacion_medico rating ON rating.cita_id = c.id AND rating.deleted_at IS NULL
+      WHERE c.id = $1
+        AND c.deleted_at IS NULL
+      GROUP BY
+        c.id,
+        pp.nombres,
+        pp.apellidos,
+        pp.usuario_id,
+        pm.nombres,
+        pm.apellidos,
+        pm.usuario_id,
+        pc.usuario_id,
+        specialties.specialties,
+        chat_request.status,
+        chat_request."scheduledAt",
+        note.id,
+        prescription.id,
+        rating.id
+      LIMIT 1
+    `,
+    [appointmentId]
+  );
+
+  return result.rows[0] || null;
+}
+
+async function isPatientLinkedToCommissionAgent(commissionAgentId, userId, patientId) {
+  const result = await query(
+    `
+      SELECT 1
+      FROM cita c
+      LEFT JOIN codigo_referido cr ON cr.id = c.codigo_referido_id AND cr.deleted_at IS NULL
+      WHERE c.deleted_at IS NULL
+        AND c.paciente_id = $3
+        AND (c.comisionista_id = $1 OR cr.usuario_id = $2)
+      LIMIT 1
+    `,
+    [commissionAgentId, userId, patientId]
+  );
+
+  return result.rowCount > 0;
 }
 
 async function updateAppointmentBusinessState(appointmentId, payload) {
@@ -423,6 +602,118 @@ async function updateAppointmentBusinessState(appointmentId, payload) {
   return result.rows[0] || null;
 }
 
+async function respondCommissionAgentChatRequest(appointment, action) {
+  return withTransaction(async (client) => {
+    await client.query(
+      `
+        UPDATE notificacion
+        SET estado = 'cancelada'
+        WHERE cita_id = $1
+          AND deleted_at IS NULL
+          AND tipo_notificacion = 'solicitud_participacion_comisionista_chat_pendiente'
+          AND estado = 'programada'
+      `,
+      [appointment.id]
+    );
+
+    if (action === 'accept') {
+      let chatId = null;
+      const existingChat = await client.query(
+        `
+          SELECT id
+          FROM chat_consulta
+          WHERE cita_id = $1
+            AND deleted_at IS NULL
+          LIMIT 1
+        `,
+        [appointment.id]
+      );
+
+      if (existingChat.rowCount > 0) {
+        chatId = existingChat.rows[0].id;
+      } else {
+        const createdChat = await client.query(
+          `
+            INSERT INTO chat_consulta (cita_id, estado)
+            VALUES ($1, 'cerrado')
+            RETURNING id
+          `,
+          [appointment.id]
+        );
+        chatId = createdChat.rows[0].id;
+      }
+
+      await client.query(
+        `
+          INSERT INTO participante_chat_consulta (
+            chat_consulta_id,
+            usuario_id,
+            rol_participante,
+            autorizado_por_paciente
+          )
+          VALUES ($1, $2, 'comisionista', TRUE)
+          ON CONFLICT (chat_consulta_id, usuario_id)
+          DO UPDATE SET
+            rol_participante = 'comisionista',
+            autorizado_por_paciente = TRUE,
+            deleted_at = NULL,
+            updated_at = NOW()
+        `,
+        [chatId, appointment.commissionAgentUserId]
+      );
+    } else {
+      await client.query(
+        `
+          UPDATE participante_chat_consulta
+          SET autorizado_por_paciente = FALSE
+          WHERE usuario_id = $1
+            AND deleted_at IS NULL
+            AND chat_consulta_id IN (
+              SELECT id
+              FROM chat_consulta
+              WHERE cita_id = $2
+                AND deleted_at IS NULL
+            )
+        `,
+        [appointment.commissionAgentUserId, appointment.id]
+      );
+    }
+
+    const notificationType =
+      action === 'accept'
+        ? 'solicitud_participacion_comisionista_chat_aceptada'
+        : 'solicitud_participacion_comisionista_chat_rechazada';
+    const patientMessage =
+      action === 'accept'
+        ? 'Aceptaste la participacion del comisionista en el chat de esta consulta.'
+        : 'Rechazaste la participacion del comisionista en el chat de esta consulta.';
+    const commissionAgentMessage =
+      action === 'accept'
+        ? 'El paciente acepto tu participacion en el chat de la consulta.'
+        : 'El paciente rechazo tu participacion en el chat de la consulta.';
+
+    await createNotification(client, {
+      userId: appointment.patientUserId,
+      appointmentId: appointment.id,
+      type: notificationType,
+      message: patientMessage,
+      scheduledAt: new Date(),
+      state: 'enviada'
+    });
+
+    await createNotification(client, {
+      userId: appointment.commissionAgentUserId,
+      appointmentId: appointment.id,
+      type: notificationType,
+      message: commissionAgentMessage,
+      scheduledAt: new Date(),
+      state: 'enviada'
+    });
+
+    return findAppointmentDetailById(appointment.id);
+  });
+}
+
 async function validateSlotForReschedule(doctorId, appointmentId, scheduledStartAt, scheduledEndAt) {
   return withTransaction(async (client) => {
     const availability = await findMatchingAvailability(client, doctorId, scheduledStartAt, scheduledEndAt);
@@ -458,7 +749,10 @@ module.exports = {
   createAppointment,
   findActorProfile,
   findAppointmentById,
+  findAppointmentDetailById,
+  isPatientLinkedToCommissionAgent,
   listAppointments,
+  respondCommissionAgentChatRequest,
   updateAppointmentBusinessState,
   updateAppointmentStatus,
   validateSlotForReschedule

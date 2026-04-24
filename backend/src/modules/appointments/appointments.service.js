@@ -4,6 +4,7 @@ const { isUuid } = require('../../utils/validators');
 const { buildPagination, getPagination } = require('../../utils/pagination');
 const appointmentsRepository = require('./appointments.repository');
 const {
+  validateCommissionAgentChatResponse,
   validateCreateAppointment,
   validateStatusUpdate
 } = require('./appointments.validator');
@@ -122,6 +123,28 @@ async function createAppointment(payload, user) {
     throw new AppError('patientId is required when an administrator creates an appointment', 400);
   }
 
+  if (user.role === 'comisionista') {
+    if (!actorProfile) {
+      throw new AppError('Commission agent profile not found for authenticated user', 403);
+    }
+
+    if (!payload.patientId) {
+      throw new AppError('patientId is required when a commission agent creates an appointment', 400);
+    }
+
+    const isLinkedPatient = await appointmentsRepository.isPatientLinkedToCommissionAgent(
+      actorProfile.commissionAgentProfileId,
+      user.sub,
+      payload.patientId
+    );
+
+    if (!isLinkedPatient) {
+      throw new AppError('Patient is not linked to this commission agent', 403);
+    }
+
+    payload.commissionAgentId = actorProfile.commissionAgentProfileId;
+  }
+
   validateCreateAppointment(payload);
 
   const cancellationDeadline = calculateCancellationWindow(payload.scheduledStartAt);
@@ -140,8 +163,6 @@ async function createAppointment(payload, user) {
       throw new AppError('Commission agent not found', 404);
     case 'commission_agent_required':
       throw new AppError('Commission agent is required when commission chat access is requested', 400);
-    case 'patient_not_authorized_for_agent_chat':
-      throw new AppError('Patient has not authorized commission agent chat participation', 409);
     case 'invalid_referral_code':
       throw new AppError('Referral code not found or inactive', 400);
     case 'doctor_not_active':
@@ -171,6 +192,27 @@ async function listAppointments(filters, user) {
   return {
     data: result.rows,
     pagination: buildPagination({ ...pagination, total: result.total })
+  };
+}
+
+async function getAppointmentDetail(appointmentId, user) {
+  if (!isUuid(appointmentId)) {
+    throw new AppError('Invalid appointmentId', 400);
+  }
+
+  const appointment = await appointmentsRepository.findAppointmentDetailById(appointmentId);
+
+  if (!appointment) {
+    throw new AppError('Appointment not found', 404);
+  }
+
+  ensureCanManageAppointment(user, appointment, ['patient', 'doctor', 'commissionAgent']);
+
+  return {
+    ...appointment,
+    patientFiles: [],
+    doctorFiles: [],
+    teleconsultRecording: null
   };
 }
 
@@ -315,12 +357,62 @@ async function completeAppointment(appointmentId, user) {
   return updated;
 }
 
+async function respondCommissionAgentChatRequest(appointmentId, payload, user) {
+  if (!isUuid(appointmentId)) {
+    throw new AppError('Invalid appointmentId', 400);
+  }
+
+  validateCommissionAgentChatResponse(payload);
+
+  const appointment = await appointmentsRepository.findAppointmentById(appointmentId);
+
+  if (!appointment) {
+    throw new AppError('Appointment not found', 404);
+  }
+
+  ensureCanManageAppointment(user, appointment, ['patient']);
+
+  if (!appointment.requiresCommissionAgentInChat || !appointment.commissionAgentId || !appointment.commissionAgentUserId) {
+    throw new AppError('This appointment does not have a pending commission agent chat request', 409);
+  }
+
+  if (!['pendiente_confirmacion', 'confirmada', 'reprogramada'].includes(appointment.status)) {
+    throw new AppError('Commission agent chat participation can only be managed before the appointment starts', 409);
+  }
+
+  const appointmentDetail = await appointmentsRepository.findAppointmentDetailById(appointmentId);
+
+  if (appointmentDetail?.commissionAgentChatRequestStatus === 'aceptada' && payload.action === 'accept') {
+    throw new AppError('Commission agent chat participation has already been accepted', 409);
+  }
+
+  if (appointmentDetail?.commissionAgentChatRequestStatus === 'rechazada' && payload.action === 'reject') {
+    throw new AppError('Commission agent chat participation has already been rejected', 409);
+  }
+
+  const updated = await appointmentsRepository.respondCommissionAgentChatRequest(appointment, payload.action);
+
+  await writeAudit({
+    actorUserId: user.sub,
+    entity: 'cita',
+    entityId: appointmentId,
+    action: payload.action === 'accept' ? 'aceptar_comisionista_chat' : 'rechazar_comisionista_chat',
+    newValues: {
+      commissionAgentChatRequestStatus: payload.action === 'accept' ? 'aceptada' : 'rechazada'
+    }
+  });
+
+  return updated;
+}
+
 module.exports = {
   cancelAppointment,
   completeAppointment,
   confirmAppointment,
   createAppointment,
+  getAppointmentDetail,
   listAppointments,
+  respondCommissionAgentChatRequest,
   rescheduleAppointment,
   updateAppointmentStatus
 };
