@@ -13,18 +13,27 @@ import { PatientHistory } from './screens/PatientHistory';
 import { PatientProfile } from './screens/PatientProfile';
 import { PatientBookAppointment } from './screens/PatientBookAppointment';
 import { PatientDoctorProfile } from './screens/PatientDoctorProfile';
+import { PatientPayments } from './screens/PatientPayments';
 import { DoctorDashboard } from './screens/DoctorDashboard';
 import { DoctorSchedule } from './screens/DoctorSchedule';
 import { DoctorProfile } from './screens/DoctorProfile';
 import { DoctorAppointments } from './screens/DoctorAppointments';
+import { DoctorPayments } from './screens/DoctorPayments';
 import { AdminDashboard } from './screens/AdminDashboard';
 import { AdminUsers } from './screens/AdminUsers';
 import { AdminDoctorReview } from './screens/AdminDoctorReview';
+import { AdminPayments } from './screens/AdminPayments';
 import { PatientDashboard } from './screens/PatientDashboard';
 import { CommissionerDashboard } from './screens/CommissionerDashboard';
 import { CommissionerCodes } from './screens/CommissionerCodes';
 import { CommissionerPatients } from './screens/CommissionerPatients';
 import { CommissionerSchedule } from './screens/CommissionerSchedule';
+import { CommissionerPayments } from './screens/CommissionerPayments';
+import { VerifyAccount } from './screens/VerifyAccount';
+import { NotificationsCenter } from './screens/NotificationsCenter';
+import { ChatCenter } from './screens/ChatCenter';
+import { VideoConsultationRoom } from './screens/PatientTeleconsult';
+import { AdminVideoConsultations } from './screens/AdminVideoConsultations';
 
 const defaultScreens: Record<UiRole, string> = {
   doctor: 'doctor-dashboard',
@@ -33,13 +42,42 @@ const defaultScreens: Record<UiRole, string> = {
   admin: 'admin-dashboard'
 };
 
+const roleScreens: Record<UiRole, string[]> = {
+  doctor: ['doctor-dashboard', 'doctor-profile', 'doctor-schedule', 'doctor-appointments', 'doctor-payments', 'doctor-video-consultation', 'notifications-center', 'chat-center'],
+  patient: [
+    'patient-dashboard',
+    'patient-search-doctors',
+    'patient-book-appointment',
+    'patient-doctor-profile',
+    'patient-appointments',
+    'patient-history',
+    'patient-payments',
+    'patient-profile',
+    'patient-video-consultation',
+    'notifications-center',
+    'chat-center'
+  ],
+  commissioner: [
+    'commissioner-dashboard',
+    'commissioner-codes',
+    'commissioner-patients',
+    'commissioner-schedule',
+    'commissioner-payments',
+    'notifications-center',
+    'chat-center'
+  ],
+  admin: ['admin-dashboard', 'admin-users', 'admin-doctor-review', 'admin-payments', 'admin-video-consultations', 'admin-settings', 'notifications-center', 'chat-center']
+};
+
 export default function App() {
   const { user, profile, role, isAuthenticated, isLoading, logout } = useAuth();
-  const [publicScreen, setPublicScreen] = useState<'landing' | 'login' | 'register'>('landing');
+  const [publicScreen, setPublicScreen] = useState<'landing' | 'login' | 'register' | 'verify'>('landing');
   const [currentScreen, setCurrentScreen] = useState('patient-dashboard');
   const [selectedDoctorId, setSelectedDoctorId] = useState<string | null>(null);
   const [selectedAppointmentId, setSelectedAppointmentId] = useState<string | null>(null);
   const [selectedCommissionerPatientId, setSelectedCommissionerPatientId] = useState<string | null>(null);
+  const [pendingVerificationUserId, setPendingVerificationUserId] = useState<string | null>(null);
+  const [selectedVideoAppointmentId, setSelectedVideoAppointmentId] = useState<string | null>(null);
 
   useEffect(() => {
     if (role) {
@@ -57,17 +95,35 @@ export default function App() {
 
   if (!isAuthenticated || !role) {
     if (publicScreen === 'login') {
-      return <Login onGoRegister={() => setPublicScreen('register')} onBackHome={() => setPublicScreen('landing')} />;
+      return (
+        <Login
+          onGoRegister={() => setPublicScreen('register')}
+          onBackHome={() => setPublicScreen('landing')}
+          onRequireVerification={(userId) => {
+            setPendingVerificationUserId(userId);
+            setPublicScreen('verify');
+          }}
+        />
+      );
     }
 
     if (publicScreen === 'register') {
       return <Register onGoLogin={() => setPublicScreen('login')} onBackHome={() => setPublicScreen('landing')} />;
     }
 
+    if (publicScreen === 'verify') {
+      return <VerifyAccount userId={pendingVerificationUserId} standalone onBackHome={() => setPublicScreen('landing')} />;
+    }
+
     return <PublicSite onLogin={() => setPublicScreen('login')} onRegister={() => setPublicScreen('register')} />;
   }
 
+  if (user?.status === 'pendiente_verificacion') {
+    return <VerifyAccount onBackHome={() => setPublicScreen('landing')} />;
+  }
+
   const userName = buildDisplayName(profile, user?.email || 'Usuario MediConnect');
+  const safeCurrentScreen = roleScreens[role].includes(currentScreen) ? currentScreen : defaultScreens[role];
 
   const patientNavigation = {
     goToSearchDoctors: () => setCurrentScreen('patient-search-doctors'),
@@ -80,6 +136,11 @@ export default function App() {
       setCurrentScreen('patient-doctor-profile');
     },
     goToAppointments: () => setCurrentScreen('patient-appointments'),
+    goToPayments: () => setCurrentScreen('patient-payments'),
+    goToVideoConsultation: (appointmentId: string) => {
+      setSelectedVideoAppointmentId(appointmentId);
+      setCurrentScreen('patient-video-consultation');
+    },
     goToHistory: (appointmentId?: string | null) => {
       setSelectedAppointmentId(appointmentId || null);
       setCurrentScreen('patient-history');
@@ -89,17 +150,25 @@ export default function App() {
   const doctorNavigation = {
     goToProfile: () => setCurrentScreen('doctor-profile'),
     goToSchedule: () => setCurrentScreen('doctor-schedule'),
-    goToAppointments: () => setCurrentScreen('doctor-appointments')
+    goToAppointments: () => setCurrentScreen('doctor-appointments'),
+    goToPayments: () => setCurrentScreen('doctor-payments'),
+    goToVideoConsultation: (appointmentId: string) => {
+      setSelectedVideoAppointmentId(appointmentId);
+      setCurrentScreen('doctor-video-consultation');
+    }
   };
 
   const adminNavigation = {
     goToUsers: () => setCurrentScreen('admin-users'),
-    goToDoctorReview: () => setCurrentScreen('admin-doctor-review')
+    goToDoctorReview: () => setCurrentScreen('admin-doctor-review'),
+    goToPayments: () => setCurrentScreen('admin-payments'),
+    goToVideoConsultations: () => setCurrentScreen('admin-video-consultations')
   };
 
   const commissionerNavigation = {
     goToCodes: () => setCurrentScreen('commissioner-codes'),
     goToPatients: () => setCurrentScreen('commissioner-patients'),
+    goToPayments: () => setCurrentScreen('commissioner-payments'),
     goToSchedule: (patientId?: string | null) => {
       setSelectedCommissionerPatientId(patientId || null);
       setCurrentScreen('commissioner-schedule');
@@ -107,16 +176,18 @@ export default function App() {
   };
 
   return (
-    <Layout userRole={role} currentScreen={currentScreen} onNavigate={setCurrentScreen} userName={userName} onLogout={logout}>
+    <Layout userRole={role} currentScreen={safeCurrentScreen} onNavigate={setCurrentScreen} userName={userName} onLogout={logout}>
       {renderScreen(
-        currentScreen,
+        safeCurrentScreen,
         role,
         {
           selectedDoctorId,
           selectedAppointmentId,
+          selectedVideoAppointmentId,
           ...patientNavigation
         },
         {
+          selectedVideoAppointmentId,
           ...doctorNavigation
         },
         {
@@ -140,6 +211,7 @@ function renderScreen(currentScreen: string, role: UiRole, patientFlow: any, doc
           onGoToBookAppointment={() => patientFlow.goToBookAppointment(null)}
           onGoToHistory={patientFlow.goToHistory}
           onGoToAppointments={patientFlow.goToAppointments}
+          onGoToPayments={patientFlow.goToPayments}
         />
       );
     case 'patient-search-doctors':
@@ -170,10 +242,21 @@ function renderScreen(currentScreen: string, role: UiRole, patientFlow: any, doc
         <PatientAppointments
           onBookAppointment={() => patientFlow.goToBookAppointment(null)}
           onOpenHistory={patientFlow.goToHistory}
+          onOpenVideoConsultation={patientFlow.goToVideoConsultation}
         />
       );
     case 'patient-history':
       return <PatientHistory selectedAppointmentId={patientFlow.selectedAppointmentId} />;
+    case 'patient-payments':
+      return <PatientPayments />;
+    case 'patient-video-consultation':
+      return (
+        <VideoConsultationRoom
+          appointmentId={patientFlow.selectedVideoAppointmentId}
+          roleMode="patient"
+          onBackToAppointments={patientFlow.goToAppointments}
+        />
+      );
     case 'patient-profile':
       return <PatientProfile />;
     case 'doctor-dashboard':
@@ -182,6 +265,7 @@ function renderScreen(currentScreen: string, role: UiRole, patientFlow: any, doc
           onGoToSchedule={doctorFlow.goToSchedule}
           onGoToAppointments={doctorFlow.goToAppointments}
           onGoToProfile={doctorFlow.goToProfile}
+          onGoToPayments={doctorFlow.goToPayments}
         />
       );
     case 'doctor-profile':
@@ -189,19 +273,26 @@ function renderScreen(currentScreen: string, role: UiRole, patientFlow: any, doc
     case 'doctor-schedule':
       return <DoctorSchedule />;
     case 'doctor-appointments':
-      return <DoctorAppointments />;
+      return <DoctorAppointments onOpenVideoConsultation={doctorFlow.goToVideoConsultation} />;
+    case 'doctor-payments':
+      return <DoctorPayments />;
     case 'admin-dashboard':
-      return <AdminDashboard onGoToUsers={adminFlow.goToUsers} onGoToDoctorReview={adminFlow.goToDoctorReview} />;
+      return <AdminDashboard onGoToUsers={adminFlow.goToUsers} onGoToDoctorReview={adminFlow.goToDoctorReview} onGoToPayments={adminFlow.goToPayments} onGoToVideoConsultations={adminFlow.goToVideoConsultations} />;
     case 'admin-users':
       return <AdminUsers />;
     case 'admin-doctor-review':
       return <AdminDoctorReview />;
+    case 'admin-payments':
+      return <AdminPayments />;
+    case 'admin-video-consultations':
+      return <AdminVideoConsultations />;
     case 'commissioner-dashboard':
       return (
         <CommissionerDashboard
           onGoToCodes={commissionerFlow.goToCodes}
           onGoToPatients={commissionerFlow.goToPatients}
           onGoToSchedule={() => commissionerFlow.goToSchedule(null)}
+          onGoToPayments={commissionerFlow.goToPayments}
         />
       );
     case 'commissioner-codes':
@@ -215,8 +306,22 @@ function renderScreen(currentScreen: string, role: UiRole, patientFlow: any, doc
           onGoToPatients={commissionerFlow.goToPatients}
         />
       );
+    case 'commissioner-payments':
+      return <CommissionerPayments />;
+    case 'doctor-video-consultation':
+      return (
+        <VideoConsultationRoom
+          appointmentId={doctorFlow.selectedVideoAppointmentId}
+          roleMode="doctor"
+          onBackToAppointments={doctorFlow.goToAppointments}
+        />
+      );
     case 'admin-settings':
       return <ComingSoon title="Configuracion" description="Aqui podras administrar parametros clave del sistema y mantener la operacion ordenada." />;
+    case 'notifications-center':
+      return <NotificationsCenter />;
+    case 'chat-center':
+      return <ChatCenter />;
     default:
       return <RoleDashboard role={role} />;
   }
@@ -233,7 +338,7 @@ function RoleDashboard({ role }: { role: UiRole }) {
       description: 'Accede rapido a tus proximas citas, especialistas y seguimiento medico.'
     },
     commissioner: {
-      title: 'Inicio comisionista',
+      title: 'Inicio gestor',
       description: 'Mantente cerca de tus referidos, oportunidades y flujos de acompanamiento.'
     },
     admin: {

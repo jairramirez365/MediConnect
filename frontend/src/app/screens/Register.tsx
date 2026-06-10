@@ -4,6 +4,7 @@ import { useAuth } from '../../store/AuthContext';
 import { api } from '../../services/api';
 import { AppBackdrop } from '../components/AppBackdrop';
 import { AuthShowcase } from '../components/AuthShowcase';
+import { ColombiaLocationFields } from '../components/ColombiaLocationFields';
 
 type RegisterProps = {
   onGoLogin: () => void;
@@ -16,6 +17,9 @@ export function Register({ onGoLogin, onBackHome }: RegisterProps) {
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [specialties, setSpecialties] = useState<any[]>([]);
+  const [departmentCode, setDepartmentCode] = useState('');
+  const [departmentName, setDepartmentName] = useState('');
+  const [municipality, setMunicipality] = useState('');
 
   useEffect(() => {
     api.specialties()
@@ -33,7 +37,9 @@ export function Register({ onGoLogin, onBackHome }: RegisterProps) {
       firstName: String(form.get('firstName') || ''),
       lastName: String(form.get('lastName') || ''),
       documentType: String(form.get('documentType') || 'CC'),
-      documentNumber: String(form.get('documentNumber') || '')
+      documentNumber: String(form.get('documentNumber') || ''),
+      department: departmentName,
+      municipality
     };
 
     const profileByRole = {
@@ -46,7 +52,6 @@ export function Register({ onGoLogin, onBackHome }: RegisterProps) {
         ...baseProfile,
         medicalLicenseNumber: String(form.get('medicalLicenseNumber') || ''),
         consultationFee: Number(form.get('consultationFee') || 0),
-        city: String(form.get('city') || ''),
         yearsOfExperience: Number(form.get('yearsOfExperience') || 0),
         professionalBio: String(form.get('professionalBio') || ''),
         specialtyIds: [String(form.get('primarySpecialtyId') || ''), String(form.get('secondarySpecialtyId') || '')].filter(Boolean)
@@ -111,7 +116,7 @@ export function Register({ onGoLogin, onBackHome }: RegisterProps) {
                 {[
                   ['paciente', 'Paciente'],
                   ['medico', 'Medico'],
-                  ['comisionista', 'Comisionista']
+                  ['comisionista', 'Gestor']
                 ].map(([value, label]) => (
                   <button
                     key={value}
@@ -135,6 +140,21 @@ export function Register({ onGoLogin, onBackHome }: RegisterProps) {
                 <Field name="phone" label="Telefono" />
                 <Field name="documentNumber" label="Numero de documento" required />
                 <Field name="documentType" label="Tipo de documento" defaultValue="CC" required />
+                <ColombiaLocationFields
+                  departmentCode={departmentCode}
+                  departmentName={departmentName}
+                  municipality={municipality}
+                  onDepartmentChange={({ code, name }) => {
+                    const departmentChanged = name !== departmentName;
+                    setDepartmentCode(code);
+                    setDepartmentName(name);
+                    if (departmentChanged) {
+                      setMunicipality('');
+                    }
+                  }}
+                  onMunicipalityChange={setMunicipality}
+                  required
+                />
 
                 {role === 'paciente' && (
                   <>
@@ -146,7 +166,6 @@ export function Register({ onGoLogin, onBackHome }: RegisterProps) {
                 {role === 'medico' && (
                   <>
                     <Field name="medicalLicenseNumber" label="Registro medico" required />
-                    <Field name="city" label="Ciudad" required />
                     <Field name="consultationFee" label="Valor consulta" type="number" required />
                     <Field name="yearsOfExperience" label="Anos de experiencia" type="number" />
                     <SelectField name="primarySpecialtyId" label="Especialidad principal" options={specialties} required />

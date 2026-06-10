@@ -70,7 +70,7 @@ export function CommissionerPatients({ onSchedulePatient }: { onSchedulePatient:
                 <div>
                   <h3 className="text-xl font-bold text-slate-950">{patient.patient}</h3>
                   <p className="mt-1 text-sm text-slate-500">
-                    {patient.authorizesCommissionAgentChat ? 'Autorizo apoyo del comisionista en chat' : 'Sin autorizacion para chat'}
+                    {patient.authorizesCommissionAgentChat ? 'Autorizo apoyo del gestor en chat' : 'Sin autorizacion para chat'}
                   </p>
                 </div>
                 <span className="rounded-full bg-blue-50 px-3 py-1 text-sm font-semibold text-blue-700">

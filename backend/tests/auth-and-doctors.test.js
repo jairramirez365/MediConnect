@@ -10,9 +10,11 @@ describe('Auth and public doctors API', () => {
   let accessToken;
   let doctorAccessToken;
   let adminAccessToken;
+  let commissionerAccessToken;
   let onboardedDoctorId;
   let onboardedDoctorToken;
   let bookedAppointmentId;
+  let videoReadyAppointmentId;
 
   function futureDateForDay(dayOfWeek) {
     const date = new Date();
@@ -83,6 +85,7 @@ describe('Auth and public doctors API', () => {
   it('logs in with seeded doctor and admin users', async () => {
     doctorAccessToken = await login('dr.lopez@mediconnect.local', 'Doctor123!');
     adminAccessToken = await login('admin@mediconnect.local', 'Admin123!');
+    commissionerAccessToken = await login('sara.comisionista@mediconnect.local', 'Comisionista123!');
   });
 
   it('returns the authenticated user with /auth/me', async () => {
@@ -203,6 +206,8 @@ describe('Auth and public doctors API', () => {
           documentType: 'CC',
           documentNumber: `P${suffix}`,
           birthDate: '1991-05-20',
+          department: 'Bogota, D.C.',
+          municipality: 'Bogota, D.C.',
           gender: 'femenino',
           bloodType: 'O+',
           address: 'Bogotá, Colombia',
@@ -215,10 +220,12 @@ describe('Auth and public doctors API', () => {
 
     assert.equal(response.status, 201);
     assert.equal(body.data.user.role, 'paciente');
-    assert.equal(body.data.user.status, 'activo');
+    assert.equal(body.data.user.status, 'pendiente_verificacion');
     assert.ok(body.data.profile.id);
     assert.ok(body.data.balance.id);
     assert.ok(body.data.accessToken);
+    assert.equal(body.data.verificationRequired, true);
+    assert.ok(body.data.verification);
   });
 
   it('registers a new doctor as pending verification and not publicly searchable', async () => {
@@ -245,7 +252,8 @@ describe('Auth and public doctors API', () => {
           professionalBio: 'Registro médico pendiente de documentos.',
           yearsOfExperience: 2,
           consultationFee: 140000,
-          city: 'Bogotá',
+          department: 'Bogota, D.C.',
+          municipality: 'Bogota, D.C.',
           specialtyIds: ['60000000-0000-0000-0000-000000000003']
         }
       })
@@ -293,7 +301,8 @@ describe('Auth and public doctors API', () => {
           professionalBio: 'Médico en flujo de onboarding.',
           yearsOfExperience: 3,
           consultationFee: 155000,
-          city,
+          department: 'Bolivar',
+          municipality: city,
           specialtyIds: ['60000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000021']
         }
       })
@@ -509,6 +518,231 @@ describe('Auth and public doctors API', () => {
     assert.ok(body.data.balanceMovement);
   });
 
+  it('exposes payments panels data and simulates a PSE checkout flow', async () => {
+    const patientSummaryResponse = await fetch(`${baseUrl}/api/v1/payments/summary`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    const patientSummaryBody = await patientSummaryResponse.json();
+
+    assert.equal(patientSummaryResponse.status, 200);
+    assert.ok(Number(patientSummaryBody.data.totalTransactions) >= 1);
+
+    const doctorPaymentsResponse = await fetch(`${baseUrl}/api/v1/payments`, {
+      headers: {
+        Authorization: `Bearer ${doctorAccessToken}`
+      }
+    });
+
+    const doctorPaymentsBody = await doctorPaymentsResponse.json();
+
+    assert.equal(doctorPaymentsResponse.status, 200);
+    assert.ok(Array.isArray(doctorPaymentsBody.data));
+
+    const commissionerPaymentsResponse = await fetch(`${baseUrl}/api/v1/payments`, {
+      headers: {
+        Authorization: `Bearer ${commissionerAccessToken}`
+      }
+    });
+
+    const commissionerPaymentsBody = await commissionerPaymentsResponse.json();
+
+    assert.equal(commissionerPaymentsResponse.status, 200);
+    assert.ok(Array.isArray(commissionerPaymentsBody.data));
+
+    const payableAppointmentsResponse = await fetch(`${baseUrl}/api/v1/payments/payable-appointments`, {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    const payableAppointmentsBody = await payableAppointmentsResponse.json();
+    let targetAppointment = payableAppointmentsBody.data[0];
+
+    assert.equal(payableAppointmentsResponse.status, 200);
+    if (!targetAppointment?.id) {
+      const bookingDate = futureDateForDay(1);
+      const createAppointmentResponse = await fetch(`${baseUrl}/api/v1/appointments`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          doctorId: onboardedDoctorId || '50000000-0000-0000-0000-000000000001',
+          scheduledStartAt: `${bookingDate}T11:30:00.000Z`,
+          scheduledEndAt: `${bookingDate}T12:00:00.000Z`,
+          timeZone: 'America/Bogota',
+          reason: 'Consulta pagable desde test',
+          appointmentType: 'primera_vez',
+          careChannel: 'virtual'
+        })
+      });
+
+      const createdBody = await createAppointmentResponse.json();
+
+      assert.equal(createAppointmentResponse.status, 201);
+      assert.equal(createdBody.data.status || createdBody.data.estado, 'pendiente_pago');
+
+      const refreshedPayableResponse = await fetch(`${baseUrl}/api/v1/payments/payable-appointments`, {
+        headers: {
+          Authorization: `Bearer ${accessToken}`
+        }
+      });
+
+      const refreshedPayableBody = await refreshedPayableResponse.json();
+      targetAppointment = refreshedPayableBody.data[0];
+      assert.equal(refreshedPayableResponse.status, 200);
+    }
+
+    assert.ok(targetAppointment?.id);
+
+    const checkoutResponse = await fetch(`${baseUrl}/api/v1/payments/appointments/${targetAppointment.id}/pse-checkout`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        currency: 'COP'
+      })
+    });
+
+    const checkoutBody = await checkoutResponse.json();
+
+    assert.equal(checkoutResponse.status, 201);
+    assert.equal(checkoutBody.data.checkout.provider, 'pse');
+    assert.equal(checkoutBody.data.payment.status === 'pendiente' || checkoutBody.data.payment.status === 'pagado', true);
+
+    if (checkoutBody.data.payment.status !== 'pagado') {
+      const confirmResponse = await fetch(`${baseUrl}/api/v1/payments/${checkoutBody.data.payment.id}/simulate-success`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          providerReference: checkoutBody.data.checkout.reference
+        })
+      });
+
+      const confirmBody = await confirmResponse.json();
+
+      assert.equal(confirmResponse.status, 200);
+      assert.equal(confirmBody.data.payment.status, 'pagado');
+    }
+
+    const adminPaymentsResponse = await fetch(`${baseUrl}/api/v1/payments?method=pse`, {
+      headers: {
+        Authorization: `Bearer ${adminAccessToken}`
+      }
+    });
+
+    const adminPaymentsBody = await adminPaymentsResponse.json();
+
+    assert.equal(adminPaymentsResponse.status, 200);
+    assert.ok(Array.isArray(adminPaymentsBody.data));
+    assert.ok(adminPaymentsBody.data.length >= 1);
+    videoReadyAppointmentId = targetAppointment.id;
+  });
+
+  it('prepares, starts, chats and finishes a video consultation with admin control', async () => {
+    assert.ok(videoReadyAppointmentId);
+
+    const prepareResponse = await fetch(`${baseUrl}/api/v1/appointments/${videoReadyAppointmentId}/video-session`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminAccessToken}`
+      }
+    });
+
+    const prepareBody = await prepareResponse.json();
+
+    assert.equal(prepareResponse.status, 201);
+    assert.equal(prepareBody.data.status, 'ready');
+    assert.ok(prepareBody.data.id);
+
+    const videoConsultationId = prepareBody.data.id;
+
+    const getResponse = await fetch(`${baseUrl}/api/v1/appointments/${videoReadyAppointmentId}/video-session`, {
+      headers: {
+        Authorization: `Bearer ${adminAccessToken}`
+      }
+    });
+
+    const getBody = await getResponse.json();
+
+    assert.equal(getResponse.status, 200);
+    assert.equal(getBody.data.id, videoConsultationId);
+    assert.ok(getBody.data.access.accessToken);
+
+    const startResponse = await fetch(`${baseUrl}/api/v1/video-consultations/${videoConsultationId}/start`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminAccessToken}`
+      }
+    });
+
+    const startBody = await startResponse.json();
+
+    assert.equal(startResponse.status, 200);
+    assert.equal(startBody.data.status, 'in_progress');
+
+    const patientMessageResponse = await fetch(`${baseUrl}/api/v1/video-consultations/${videoConsultationId}/messages`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        content: 'Paciente conectado a la videoconsulta'
+      })
+    });
+
+    const patientMessageBody = await patientMessageResponse.json();
+
+    assert.equal(patientMessageResponse.status, 201);
+    assert.equal(patientMessageBody.data.type, 'texto');
+
+    const listMessagesResponse = await fetch(`${baseUrl}/api/v1/video-consultations/${videoConsultationId}/messages`, {
+      headers: {
+        Authorization: `Bearer ${onboardedDoctorToken}`
+      }
+    });
+
+    const listMessagesBody = await listMessagesResponse.json();
+
+    assert.equal(listMessagesResponse.status, 200);
+    assert.ok(Array.isArray(listMessagesBody.data));
+    assert.ok(listMessagesBody.data.length >= 2);
+
+    const endResponse = await fetch(`${baseUrl}/api/v1/video-consultations/${videoConsultationId}/end`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${adminAccessToken}`
+      }
+    });
+
+    const endBody = await endResponse.json();
+
+    assert.equal(endResponse.status, 200);
+    assert.equal(endBody.data.status, 'completed');
+
+    const adminListResponse = await fetch(`${baseUrl}/api/v1/video-consultations?status=completed`, {
+      headers: {
+        Authorization: `Bearer ${adminAccessToken}`
+      }
+    });
+
+    const adminListBody = await adminListResponse.json();
+
+    assert.equal(adminListResponse.status, 200);
+    assert.ok(Array.isArray(adminListBody.data));
+    assert.ok(adminListBody.data.some((session) => session.id === videoConsultationId));
+  });
+
   it('updates patient and doctor profiles and lists users with pagination', async () => {
     const patientProfileResponse = await fetch(`${baseUrl}/api/v1/profiles/me`, {
       method: 'PATCH',
@@ -534,7 +768,8 @@ describe('Auth and public doctors API', () => {
         'Content-Type': 'application/json'
       },
       body: JSON.stringify({
-        city: 'Santa Marta',
+        department: 'Magdalena',
+        municipality: 'Santa Marta',
         consultationFee: 175000
       })
     });
@@ -575,7 +810,9 @@ describe('Auth and public doctors API', () => {
           lastName: 'Bloqueable',
           documentType: 'CC',
           documentNumber: `BL${suffix}`,
-          birthDate: '1990-01-01'
+          birthDate: '1990-01-01',
+          department: 'Atlantico',
+          municipality: 'Barranquilla'
         }
       })
     });
@@ -685,3 +922,4 @@ describe('Auth and public doctors API', () => {
     assert.equal(prescriptionExists, true);
   });
 });
+

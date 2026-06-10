@@ -29,13 +29,15 @@ async function updatePatientProfile(userId, payload) {
         fecha_nacimiento = COALESCE($4, fecha_nacimiento),
         sexo = COALESCE($5, sexo),
         tipo_sangre = COALESCE($6, tipo_sangre),
-        direccion = COALESCE($7, direccion),
-        nombre_contacto_emergencia = COALESCE($8, nombre_contacto_emergencia),
-        telefono_contacto_emergencia = COALESCE($9, telefono_contacto_emergencia),
-        autorizo_participacion_comisionista_chat = COALESCE($10, autorizo_participacion_comisionista_chat)
+        departamento = COALESCE($7, departamento),
+        municipio = COALESCE($8, municipio),
+        direccion = COALESCE($9, direccion),
+        nombre_contacto_emergencia = COALESCE($10, nombre_contacto_emergencia),
+        telefono_contacto_emergencia = COALESCE($11, telefono_contacto_emergencia),
+        autorizo_participacion_comisionista_chat = COALESCE($12, autorizo_participacion_comisionista_chat)
       WHERE usuario_id = $1
         AND deleted_at IS NULL
-      RETURNING id, nombres, apellidos, direccion, autorizo_participacion_comisionista_chat AS "authorizesCommissionAgentChat"
+      RETURNING id, nombres, apellidos, departamento, municipio, direccion, autorizo_participacion_comisionista_chat AS "authorizesCommissionAgentChat"
     `,
     [
       userId,
@@ -44,6 +46,8 @@ async function updatePatientProfile(userId, payload) {
       payload.birthDate || null,
       payload.gender || null,
       payload.bloodType || null,
+      payload.department || null,
+      payload.municipality || null,
       payload.address || null,
       payload.emergencyContactName || null,
       payload.emergencyContactPhone || null,
@@ -65,10 +69,12 @@ async function updateDoctorProfile(userId, payload) {
         anos_experiencia = COALESCE($5, anos_experiencia),
         valor_consulta = COALESCE($6, valor_consulta),
         modalidad_atencion = COALESCE($7, modalidad_atencion),
-        ciudad = COALESCE($8, ciudad)
+        departamento = COALESCE($8, departamento),
+        municipio = COALESCE($9, municipio),
+        ciudad = COALESCE($10, ciudad)
       WHERE usuario_id = $1
         AND deleted_at IS NULL
-      RETURNING id, nombres, apellidos, ciudad, modalidad_atencion AS "careMode", valor_consulta AS "consultationFee"
+      RETURNING id, nombres, apellidos, departamento, municipio, ciudad, modalidad_atencion AS "careMode", valor_consulta AS "consultationFee"
     `,
     [
       userId,
@@ -78,7 +84,9 @@ async function updateDoctorProfile(userId, payload) {
       payload.yearsOfExperience ?? null,
       payload.consultationFee ?? null,
       payload.careMode || null,
-      payload.city || null
+      payload.department || null,
+      payload.municipality || null,
+      payload.municipality || payload.city || null
     ]
   );
 

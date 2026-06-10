@@ -3,3 +3,27 @@ Administrador	admin@mediconnect.local			Admin123!
 Paciente	ana.paciente@mediconnect.local		Paciente123!
 Médico		dr.lopez@mediconnect.local		Doctor123!
 Comisionista	sara.comisionista@mediconnect.local	Comisionista123!
+
+
+
+confirmar cita, cuando se haga el pago, notificaciones -> whatsapp 
+
+horarios disponibles paciente, filtros
+
+seguimiento, no se cobra
+control, preagendamiento a meses cuando haga el pago se confirma
+
+medico, si cancela que reagente el gestor, filtros para buscar citas
+
+departamento y municipio al loggin 
+
+panel gestores
+notificaciones, contestar mensajes, gestor por codigo y por municipio, se asigna de una 
+el valor es demasiado largo para el tipo character varying(50) error
+con codigos 
+
+el paciente ya no genera codigo, vincular el gestor siempre
+
+todos pueden hablar con el administrador, enviar mensajes medico y gestor se pueda llevar una conversacion 
+
+

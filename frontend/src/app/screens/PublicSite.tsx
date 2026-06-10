@@ -208,7 +208,7 @@ Nuestro modelo de comisiones es transparente: los medicos y referidores solo pag
                   <h3 className="text-xl font-bold text-slate-950">Beneficios por comisiones</h3>
                 </div>
                 <p className="mt-4 text-base leading-8 text-slate-600">
-                  MediConnect contempla beneficios derivados de referidos y comisiones. Un paciente puede generar un codigo de referido, y un comisionista puede participar en el crecimiento del sistema mediante acompanamiento y captacion.
+                  MediConnect contempla beneficios derivados de referidos y comisiones. Un paciente puede generar un codigo de referido, y un gestor puede participar en el crecimiento del sistema mediante acompanamiento y captacion.
                 </p>
               </div>
 

@@ -1,12 +1,22 @@
 import { FileUp, Save, ShieldCheck, Stethoscope } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { api } from '../../services/api';
 import { useAuth } from '../../store/AuthContext';
 import { StatusBadge } from '../components/StatusBadge';
+import { ColombiaLocationFields } from '../components/ColombiaLocationFields';
 
 export function DoctorProfile() {
   const { profile, refreshProfile } = useAuth();
   const [message, setMessage] = useState('');
+  const [departmentCode, setDepartmentCode] = useState('');
+  const [departmentName, setDepartmentName] = useState('');
+  const [municipality, setMunicipality] = useState('');
+
+  useEffect(() => {
+    setDepartmentName(String(profile?.departamento || ''));
+    setDepartmentCode('');
+    setMunicipality(String(profile?.municipio || ''));
+  }, [profile?.departamento, profile?.municipio]);
 
   async function updateProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -17,7 +27,8 @@ export function DoctorProfile() {
       await api.updateProfile({
         firstName: String(form.get('firstName') || ''),
         lastName: String(form.get('lastName') || ''),
-        city: String(form.get('city') || ''),
+        department: departmentName,
+        municipality,
         consultationFee: Number(form.get('consultationFee') || 0),
         yearsOfExperience: Number(form.get('yearsOfExperience') || 0),
         professionalBio: String(form.get('professionalBio') || '')
@@ -96,7 +107,20 @@ export function DoctorProfile() {
         <div className="mt-6 grid gap-4 md:grid-cols-2">
           <Field name="firstName" label="Nombres" defaultValue={profile?.nombres || ''} />
           <Field name="lastName" label="Apellidos" defaultValue={profile?.apellidos || ''} />
-          <Field name="city" label="Ciudad" defaultValue={profile?.ciudad || ''} />
+          <ColombiaLocationFields
+            departmentCode={departmentCode}
+            departmentName={departmentName}
+            municipality={municipality}
+            onDepartmentChange={({ code, name }) => {
+              const departmentChanged = name !== departmentName;
+              setDepartmentCode(code);
+              setDepartmentName(name);
+              if (departmentChanged) {
+                setMunicipality('');
+              }
+            }}
+            onMunicipalityChange={setMunicipality}
+          />
           <Field
             name="consultationFee"
             label="Valor consulta"

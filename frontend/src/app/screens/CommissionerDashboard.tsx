@@ -6,11 +6,13 @@ import { EmptyState, ErrorState, LoadingState } from '../components/AsyncState';
 export function CommissionerDashboard({
   onGoToCodes,
   onGoToPatients,
-  onGoToSchedule
+  onGoToSchedule,
+  onGoToPayments
 }: {
   onGoToCodes: () => void;
   onGoToPatients: () => void;
   onGoToSchedule: () => void;
+  onGoToPayments: () => void;
 }) {
   const [data, setData] = useState<any | null>(null);
   const [error, setError] = useState('');
@@ -22,7 +24,7 @@ export function CommissionerDashboard({
         const response = await api.commissionerOverview();
         setData(response.data || null);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'No fue posible cargar el inicio del comisionista.');
+        setError(err instanceof Error ? err.message : 'No fue posible cargar el inicio del gestor.');
       } finally {
         setIsLoading(false);
       }
@@ -31,7 +33,7 @@ export function CommissionerDashboard({
     loadOverview();
   }, []);
 
-  if (isLoading) return <LoadingState label="Cargando inicio comisionista..." />;
+  if (isLoading) return <LoadingState label="Cargando inicio gestor..." />;
   if (error) return <ErrorState message={error} />;
 
   const overview = data?.overview || {};
@@ -46,7 +48,7 @@ export function CommissionerDashboard({
               <Users className="h-4 w-4" />
               Acompanamiento y referidos
             </div>
-            <h1 className="mt-5 text-4xl font-black tracking-[-0.05em] md:text-5xl">Inicio comisionista</h1>
+            <h1 className="mt-5 text-4xl font-black tracking-[-0.05em] md:text-5xl">Inicio gestor</h1>
             <p className="mt-4 max-w-2xl text-base leading-8 text-blue-50 md:text-lg">
               Gestiona tus pacientes vinculados, genera codigos unicos y acompana la agenda de quienes requieren apoyo para reservar.
             </p>
@@ -54,6 +56,7 @@ export function CommissionerDashboard({
               <ActionChip label="Ver codigos" icon={Code} onClick={onGoToCodes} />
               <ActionChip label="Pacientes vinculados" icon={Users} onClick={onGoToPatients} />
               <ActionChip label="Agendar cita" icon={Calendar} onClick={onGoToSchedule} />
+              <ActionChip label="Ver pagos" icon={Wallet} onClick={onGoToPayments} />
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

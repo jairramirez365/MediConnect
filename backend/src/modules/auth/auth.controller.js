@@ -26,8 +26,37 @@ async function me(req, res) {
   });
 }
 
+async function resendVerification(req, res) {
+  const result = await authService.resendVerification(req.body);
+
+  res.status(200).json({
+    message: 'Verification resent successfully',
+    data: result
+  });
+}
+
+async function verifyContact(req, res) {
+  const result = await authService.verifyContact(req.body);
+
+  res.status(200).json({
+    message: 'Contact verified successfully',
+    data: result
+  });
+}
+
+async function verificationStatus(req, res) {
+  const result = await authService.getVerificationStatus(req.params.userId);
+
+  res.status(200).json({
+    data: result
+  });
+}
+
 module.exports = {
   login,
   me,
-  register
+  register,
+  resendVerification,
+  verificationStatus,
+  verifyContact
 };

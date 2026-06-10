@@ -14,6 +14,9 @@ const authRateLimit = rateLimit({
 
 router.post('/register', authRateLimit, asyncHandler(authController.register));
 router.post('/login', authRateLimit, asyncHandler(authController.login));
+router.post('/resend-verification', authRateLimit, asyncHandler(authController.resendVerification));
+router.post('/verify-contact', authRateLimit, asyncHandler(authController.verifyContact));
+router.get('/verification-status/:userId', asyncHandler(authController.verificationStatus));
 router.get('/me', authenticate, asyncHandler(authController.me));
 
 module.exports = router;

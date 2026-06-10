@@ -25,6 +25,8 @@ CREATE TABLE IF NOT EXISTS usuario (
   contrasena_hash VARCHAR(255) NOT NULL,
   rol_codigo VARCHAR(50) NOT NULL,
   estado VARCHAR(50) NOT NULL,
+  correo_verificado_at TIMESTAMPTZ,
+  telefono_verificado_at TIMESTAMPTZ,
   fecha_ultimo_acceso TIMESTAMPTZ,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -33,6 +35,34 @@ CREATE TABLE IF NOT EXISTS usuario (
     FOREIGN KEY (rol_codigo) REFERENCES rol (codigo),
   CONSTRAINT chk_usuario_estado
     CHECK (estado IN ('activo', 'pendiente_verificacion', 'bloqueado', 'inactivo', 'eliminado'))
+);
+
+CREATE TABLE IF NOT EXISTS verificacion_contacto (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  usuario_id UUID NOT NULL,
+  canal VARCHAR(30) NOT NULL,
+  destino VARCHAR(255) NOT NULL,
+  codigo_hash VARCHAR(255) NOT NULL,
+  token_seguro VARCHAR(120),
+  estado VARCHAR(30) NOT NULL DEFAULT 'pendiente',
+  intentos_validacion INTEGER NOT NULL DEFAULT 0,
+  max_intentos_validacion INTEGER NOT NULL DEFAULT 5,
+  intentos_reenvio INTEGER NOT NULL DEFAULT 0,
+  max_reenvios INTEGER NOT NULL DEFAULT 5,
+  fecha_expiracion TIMESTAMPTZ NOT NULL,
+  bloqueado_hasta TIMESTAMPTZ,
+  ultimo_envio_at TIMESTAMPTZ,
+  verificado_at TIMESTAMPTZ,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT fk_verificacion_contacto_usuario
+    FOREIGN KEY (usuario_id) REFERENCES usuario (id),
+  CONSTRAINT chk_verificacion_contacto_canal
+    CHECK (canal IN ('email', 'sms', 'whatsapp')),
+  CONSTRAINT chk_verificacion_contacto_estado
+    CHECK (estado IN ('pendiente', 'enviada', 'verificada', 'expirada', 'bloqueada', 'cancelada'))
 );
 
 CREATE TABLE IF NOT EXISTS perfil_paciente (
@@ -45,6 +75,8 @@ CREATE TABLE IF NOT EXISTS perfil_paciente (
   fecha_nacimiento DATE NOT NULL,
   sexo VARCHAR(20),
   tipo_sangre VARCHAR(10),
+  departamento VARCHAR(120),
+  municipio VARCHAR(120),
   direccion TEXT,
   nombre_contacto_emergencia VARCHAR(150),
   telefono_contacto_emergencia VARCHAR(30),
@@ -61,6 +93,8 @@ CREATE TABLE IF NOT EXISTS perfil_administrador (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   usuario_id UUID NOT NULL UNIQUE,
   nombre_mostrar VARCHAR(150) NOT NULL,
+  departamento VARCHAR(120),
+  municipio VARCHAR(120),
   alcance_permisos JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
@@ -76,6 +110,8 @@ CREATE TABLE IF NOT EXISTS perfil_comisionista (
   apellidos VARCHAR(120) NOT NULL,
   tipo_documento VARCHAR(30) NOT NULL,
   numero_documento VARCHAR(30) NOT NULL UNIQUE,
+  departamento VARCHAR(120),
+  municipio VARCHAR(120),
   codigo_referido_principal VARCHAR(50) NOT NULL UNIQUE,
   porcentaje_comision_base NUMERIC(5,2) NOT NULL,
   estado VARCHAR(50) NOT NULL,
@@ -101,6 +137,8 @@ CREATE TABLE IF NOT EXISTS perfil_medico (
   anos_experiencia INTEGER NOT NULL DEFAULT 0,
   valor_consulta NUMERIC(12,2) NOT NULL,
   modalidad_atencion VARCHAR(20) NOT NULL,
+  departamento VARCHAR(120),
+  municipio VARCHAR(120),
   ciudad VARCHAR(120) NOT NULL,
   estado_validacion VARCHAR(50) NOT NULL,
   fue_aprobado_por_administrador BOOLEAN NOT NULL DEFAULT FALSE,
@@ -226,6 +264,7 @@ CREATE TABLE IF NOT EXISTS cita (
   canal_atencion VARCHAR(20) NOT NULL,
   estado VARCHAR(50) NOT NULL,
   requiere_comisionista_en_chat BOOLEAN NOT NULL DEFAULT FALSE,
+  fecha_expiracion_pago TIMESTAMPTZ,
   fecha_limite_cancelacion_sin_multa TIMESTAMPTZ NOT NULL,
   valor_consulta NUMERIC(12,2) NOT NULL,
   valor_multa_cancelacion NUMERIC(12,2) NOT NULL DEFAULT 0,
@@ -250,10 +289,20 @@ CREATE TABLE IF NOT EXISTS cita (
   CONSTRAINT chk_cita_canal_atencion
     CHECK (canal_atencion IN ('virtual', 'presencial')),
   CONSTRAINT chk_cita_estado
-    CHECK (estado IN ('pendiente_confirmacion', 'confirmada', 'en_curso', 'completada', 'cancelada_por_paciente', 'cancelada_por_medico', 'reprogramada', 'no_asistio_paciente', 'no_asistio_medico', 'fallida')),
+    CHECK (estado IN ('pendiente_pago', 'pendiente_confirmacion', 'confirmada', 'en_curso', 'completada', 'cancelada_por_paciente', 'cancelada_por_medico', 'reprogramada', 'no_asistio_paciente', 'no_asistio_medico', 'fallida', 'expirada_por_no_pago')),
   CONSTRAINT chk_cita_fechas
     CHECK (fecha_hora_inicio_programada < fecha_hora_fin_programada)
 );
+
+ALTER TABLE cita
+  ADD COLUMN IF NOT EXISTS fecha_expiracion_pago TIMESTAMPTZ;
+
+ALTER TABLE cita
+  DROP CONSTRAINT IF EXISTS chk_cita_estado;
+
+ALTER TABLE cita
+  ADD CONSTRAINT chk_cita_estado
+    CHECK (estado IN ('pendiente_pago', 'pendiente_confirmacion', 'confirmada', 'en_curso', 'completada', 'cancelada_por_paciente', 'cancelada_por_medico', 'reprogramada', 'no_asistio_paciente', 'no_asistio_medico', 'fallida', 'expirada_por_no_pago'));
 
 CREATE TABLE IF NOT EXISTS historia_clinica (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -486,16 +535,84 @@ CREATE TABLE IF NOT EXISTS participante_chat_consulta (
     CHECK (rol_participante IN ('medico', 'paciente', 'comisionista'))
 );
 
+CREATE TABLE IF NOT EXISTS conversacion (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tipo_conversacion VARCHAR(50) NOT NULL,
+  asunto VARCHAR(180),
+  estado VARCHAR(30) NOT NULL DEFAULT 'activa',
+  contexto_tipo VARCHAR(50),
+  contexto_id UUID,
+  ultimo_mensaje_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT chk_conversacion_tipo
+    CHECK (tipo_conversacion IN ('paciente_gestor', 'medico_gestor', 'admin_gestor', 'admin_medico', 'admin_supervision')),
+  CONSTRAINT chk_conversacion_estado
+    CHECK (estado IN ('activa', 'archivada', 'cerrada'))
+);
+
+CREATE TABLE IF NOT EXISTS participante_conversacion (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversacion_id UUID NOT NULL,
+  usuario_id UUID NOT NULL,
+  rol_usuario VARCHAR(30) NOT NULL,
+  ultima_lectura_at TIMESTAMPTZ,
+  archivada_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT fk_participante_conversacion_conversacion
+    FOREIGN KEY (conversacion_id) REFERENCES conversacion (id),
+  CONSTRAINT fk_participante_conversacion_usuario
+    FOREIGN KEY (usuario_id) REFERENCES usuario (id),
+  CONSTRAINT uq_participante_conversacion UNIQUE (conversacion_id, usuario_id),
+  CONSTRAINT chk_participante_conversacion_rol
+    CHECK (rol_usuario IN ('paciente', 'medico', 'comisionista', 'administrador'))
+);
+
+CREATE TABLE IF NOT EXISTS mensaje_conversacion (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversacion_id UUID NOT NULL,
+  remitente_usuario_id UUID NOT NULL,
+  tipo_mensaje VARCHAR(30) NOT NULL DEFAULT 'texto',
+  contenido TEXT NOT NULL,
+  metadata JSONB,
+  estado VARCHAR(30) NOT NULL DEFAULT 'enviado',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT fk_mensaje_conversacion_conversacion
+    FOREIGN KEY (conversacion_id) REFERENCES conversacion (id),
+  CONSTRAINT fk_mensaje_conversacion_remitente
+    FOREIGN KEY (remitente_usuario_id) REFERENCES usuario (id),
+  CONSTRAINT chk_mensaje_conversacion_tipo
+    CHECK (tipo_mensaje IN ('texto', 'sistema')),
+  CONSTRAINT chk_mensaje_conversacion_estado
+    CHECK (estado IN ('enviado', 'leido'))
+);
+
 CREATE TABLE IF NOT EXISTS notificacion (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   usuario_id UUID NOT NULL,
   cita_id UUID,
-  tipo_notificacion VARCHAR(50) NOT NULL,
+  tipo_notificacion VARCHAR(120) NOT NULL,
+  tipo_evento VARCHAR(80),
   canal VARCHAR(30) NOT NULL,
+  destinatario VARCHAR(255),
+  proveedor VARCHAR(80),
+  proveedor_mensaje_id VARCHAR(120),
   mensaje TEXT NOT NULL,
   estado VARCHAR(30) NOT NULL,
+  intentos_envio INTEGER NOT NULL DEFAULT 0,
+  ultimo_intento_envio TIMESTAMPTZ,
   fecha_programada_envio TIMESTAMPTZ NOT NULL,
   fecha_envio TIMESTAMPTZ,
+  fecha_entrega TIMESTAMPTZ,
+  fecha_lectura TIMESTAMPTZ,
+  error_envio TEXT,
+  payload JSONB,
+  metadata JSONB,
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   deleted_at TIMESTAMPTZ,
@@ -505,6 +622,47 @@ CREATE TABLE IF NOT EXISTS notificacion (
     FOREIGN KEY (cita_id) REFERENCES cita (id),
   CONSTRAINT chk_notificacion_estado
     CHECK (estado IN ('programada', 'enviada', 'fallida', 'cancelada'))
+);
+
+CREATE TABLE IF NOT EXISTS video_consulta (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cita_id UUID NOT NULL UNIQUE,
+  proveedor VARCHAR(50) NOT NULL,
+  proveedor_sala_id VARCHAR(150) NOT NULL,
+  url_sala TEXT NOT NULL,
+  estado VARCHAR(30) NOT NULL,
+  fecha_habilitacion_acceso TIMESTAMPTZ NOT NULL,
+  fecha_expiracion_acceso TIMESTAMPTZ NOT NULL,
+  fecha_inicio_real TIMESTAMPTZ,
+  fecha_fin_real TIMESTAMPTZ,
+  url_grabacion TEXT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT fk_video_consulta_cita
+    FOREIGN KEY (cita_id) REFERENCES cita (id),
+  CONSTRAINT chk_video_consulta_estado
+    CHECK (estado IN ('pending', 'ready', 'in_progress', 'completed', 'cancelled', 'expired', 'failed'))
+);
+
+CREATE TABLE IF NOT EXISTS mensaje_video_consulta (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  video_consulta_id UUID NOT NULL,
+  remitente_usuario_id UUID NOT NULL,
+  rol_remitente VARCHAR(30) NOT NULL,
+  tipo_mensaje VARCHAR(30) NOT NULL DEFAULT 'texto',
+  contenido TEXT NOT NULL,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ,
+  CONSTRAINT fk_mensaje_video_consulta_video
+    FOREIGN KEY (video_consulta_id) REFERENCES video_consulta (id),
+  CONSTRAINT fk_mensaje_video_consulta_usuario
+    FOREIGN KEY (remitente_usuario_id) REFERENCES usuario (id),
+  CONSTRAINT chk_mensaje_video_consulta_tipo
+    CHECK (tipo_mensaje IN ('texto', 'sistema', 'archivo'))
 );
 
 CREATE TABLE IF NOT EXISTS auditoria (
@@ -522,20 +680,55 @@ CREATE TABLE IF NOT EXISTS auditoria (
     FOREIGN KEY (usuario_actor_id) REFERENCES usuario (id)
 );
 
+ALTER TABLE perfil_paciente
+  ADD COLUMN IF NOT EXISTS departamento VARCHAR(120),
+  ADD COLUMN IF NOT EXISTS municipio VARCHAR(120);
+
+ALTER TABLE perfil_administrador
+  ADD COLUMN IF NOT EXISTS departamento VARCHAR(120),
+  ADD COLUMN IF NOT EXISTS municipio VARCHAR(120);
+
+ALTER TABLE perfil_comisionista
+  ADD COLUMN IF NOT EXISTS departamento VARCHAR(120),
+  ADD COLUMN IF NOT EXISTS municipio VARCHAR(120);
+
+ALTER TABLE perfil_medico
+  ADD COLUMN IF NOT EXISTS departamento VARCHAR(120),
+  ADD COLUMN IF NOT EXISTS municipio VARCHAR(120);
+
+ALTER TABLE usuario
+  ADD COLUMN IF NOT EXISTS correo_verificado_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS telefono_verificado_at TIMESTAMPTZ;
+
 CREATE INDEX IF NOT EXISTS idx_usuario_rol_codigo ON usuario (rol_codigo);
 CREATE INDEX IF NOT EXISTS idx_usuario_estado ON usuario (estado);
 CREATE INDEX IF NOT EXISTS idx_usuario_fecha_ultimo_acceso ON usuario (fecha_ultimo_acceso);
+CREATE INDEX IF NOT EXISTS idx_usuario_correo_verificado_at ON usuario (correo_verificado_at);
+CREATE INDEX IF NOT EXISTS idx_usuario_telefono_verificado_at ON usuario (telefono_verificado_at);
+
+CREATE INDEX IF NOT EXISTS idx_verificacion_contacto_usuario_id ON verificacion_contacto (usuario_id);
+CREATE INDEX IF NOT EXISTS idx_verificacion_contacto_canal ON verificacion_contacto (canal);
+CREATE INDEX IF NOT EXISTS idx_verificacion_contacto_estado ON verificacion_contacto (estado);
+CREATE INDEX IF NOT EXISTS idx_verificacion_contacto_fecha_expiracion ON verificacion_contacto (fecha_expiracion);
 
 CREATE INDEX IF NOT EXISTS idx_perfil_paciente_usuario_id ON perfil_paciente (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_perfil_paciente_fecha_nacimiento ON perfil_paciente (fecha_nacimiento);
+CREATE INDEX IF NOT EXISTS idx_perfil_paciente_departamento ON perfil_paciente (departamento);
+CREATE INDEX IF NOT EXISTS idx_perfil_paciente_municipio ON perfil_paciente (municipio);
 
 CREATE INDEX IF NOT EXISTS idx_perfil_administrador_usuario_id ON perfil_administrador (usuario_id);
+CREATE INDEX IF NOT EXISTS idx_perfil_administrador_departamento ON perfil_administrador (departamento);
+CREATE INDEX IF NOT EXISTS idx_perfil_administrador_municipio ON perfil_administrador (municipio);
 
 CREATE INDEX IF NOT EXISTS idx_perfil_comisionista_usuario_id ON perfil_comisionista (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_perfil_comisionista_estado ON perfil_comisionista (estado);
+CREATE INDEX IF NOT EXISTS idx_perfil_comisionista_departamento ON perfil_comisionista (departamento);
+CREATE INDEX IF NOT EXISTS idx_perfil_comisionista_municipio ON perfil_comisionista (municipio);
 
 CREATE INDEX IF NOT EXISTS idx_perfil_medico_usuario_id ON perfil_medico (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_perfil_medico_estado_validacion ON perfil_medico (estado_validacion);
+CREATE INDEX IF NOT EXISTS idx_perfil_medico_departamento ON perfil_medico (departamento);
+CREATE INDEX IF NOT EXISTS idx_perfil_medico_municipio ON perfil_medico (municipio);
 CREATE INDEX IF NOT EXISTS idx_perfil_medico_ciudad ON perfil_medico (ciudad);
 CREATE INDEX IF NOT EXISTS idx_perfil_medico_modalidad_atencion ON perfil_medico (modalidad_atencion);
 CREATE INDEX IF NOT EXISTS idx_perfil_medico_administrador_aprobador_id ON perfil_medico (administrador_aprobador_id);
@@ -561,6 +754,7 @@ CREATE INDEX IF NOT EXISTS idx_cita_comisionista_id ON cita (comisionista_id);
 CREATE INDEX IF NOT EXISTS idx_cita_codigo_referido_id ON cita (codigo_referido_id);
 CREATE INDEX IF NOT EXISTS idx_cita_cancelada_por_usuario_id ON cita (cancelada_por_usuario_id);
 CREATE INDEX IF NOT EXISTS idx_cita_estado ON cita (estado);
+CREATE INDEX IF NOT EXISTS idx_cita_fecha_expiracion_pago ON cita (fecha_expiracion_pago);
 CREATE INDEX IF NOT EXISTS idx_cita_fecha_inicio ON cita (fecha_hora_inicio_programada);
 CREATE INDEX IF NOT EXISTS idx_cita_medico_fecha_estado ON cita (medico_id, fecha_hora_inicio_programada, estado);
 CREATE INDEX IF NOT EXISTS idx_cita_paciente_fecha_estado ON cita (paciente_id, fecha_hora_inicio_programada, estado);
@@ -605,10 +799,39 @@ CREATE INDEX IF NOT EXISTS idx_chat_consulta_estado ON chat_consulta (estado);
 CREATE INDEX IF NOT EXISTS idx_participante_chat_consulta_chat_id ON participante_chat_consulta (chat_consulta_id);
 CREATE INDEX IF NOT EXISTS idx_participante_chat_consulta_usuario_id ON participante_chat_consulta (usuario_id);
 
+CREATE INDEX IF NOT EXISTS idx_conversacion_tipo ON conversacion (tipo_conversacion);
+CREATE INDEX IF NOT EXISTS idx_conversacion_estado ON conversacion (estado);
+CREATE INDEX IF NOT EXISTS idx_conversacion_contexto ON conversacion (contexto_tipo, contexto_id);
+CREATE INDEX IF NOT EXISTS idx_conversacion_ultimo_mensaje_at ON conversacion (ultimo_mensaje_at);
+
+CREATE INDEX IF NOT EXISTS idx_participante_conversacion_conversacion_id ON participante_conversacion (conversacion_id);
+CREATE INDEX IF NOT EXISTS idx_participante_conversacion_usuario_id ON participante_conversacion (usuario_id);
+CREATE INDEX IF NOT EXISTS idx_participante_conversacion_ultima_lectura_at ON participante_conversacion (ultima_lectura_at);
+
+CREATE INDEX IF NOT EXISTS idx_mensaje_conversacion_conversacion_id ON mensaje_conversacion (conversacion_id);
+CREATE INDEX IF NOT EXISTS idx_mensaje_conversacion_remitente_usuario_id ON mensaje_conversacion (remitente_usuario_id);
+CREATE INDEX IF NOT EXISTS idx_mensaje_conversacion_created_at ON mensaje_conversacion (created_at);
+
 CREATE INDEX IF NOT EXISTS idx_notificacion_usuario_id ON notificacion (usuario_id);
 CREATE INDEX IF NOT EXISTS idx_notificacion_cita_id ON notificacion (cita_id);
 CREATE INDEX IF NOT EXISTS idx_notificacion_estado ON notificacion (estado);
 CREATE INDEX IF NOT EXISTS idx_notificacion_fecha_programada_envio ON notificacion (fecha_programada_envio);
+CREATE INDEX IF NOT EXISTS idx_notificacion_canal ON notificacion (canal);
+CREATE INDEX IF NOT EXISTS idx_notificacion_tipo_evento ON notificacion (tipo_evento);
+CREATE INDEX IF NOT EXISTS idx_notificacion_fecha_lectura ON notificacion (fecha_lectura);
+
+CREATE INDEX IF NOT EXISTS idx_video_consulta_cita_id ON video_consulta (cita_id);
+CREATE INDEX IF NOT EXISTS idx_video_consulta_estado ON video_consulta (estado);
+CREATE INDEX IF NOT EXISTS idx_video_consulta_proveedor ON video_consulta (proveedor);
+CREATE INDEX IF NOT EXISTS idx_video_consulta_fecha_habilitacion_acceso ON video_consulta (fecha_habilitacion_acceso);
+CREATE INDEX IF NOT EXISTS idx_video_consulta_fecha_expiracion_acceso ON video_consulta (fecha_expiracion_acceso);
+
+CREATE INDEX IF NOT EXISTS idx_mensaje_video_consulta_video_id ON mensaje_video_consulta (video_consulta_id);
+CREATE INDEX IF NOT EXISTS idx_mensaje_video_consulta_remitente_usuario_id ON mensaje_video_consulta (remitente_usuario_id);
+CREATE INDEX IF NOT EXISTS idx_mensaje_video_consulta_created_at ON mensaje_video_consulta (created_at);
+
+ALTER TABLE notificacion
+  ALTER COLUMN tipo_notificacion TYPE VARCHAR(120);
 
 CREATE INDEX IF NOT EXISTS idx_auditoria_usuario_actor_id ON auditoria (usuario_actor_id);
 CREATE INDEX IF NOT EXISTS idx_auditoria_entidad ON auditoria (entidad);
@@ -638,4 +861,6 @@ CREATE OR REPLACE TRIGGER trg_calificacion_medico_updated_at BEFORE UPDATE ON ca
 CREATE OR REPLACE TRIGGER trg_chat_consulta_updated_at BEFORE UPDATE ON chat_consulta FOR EACH ROW EXECUTE FUNCTION actualizar_updated_at();
 CREATE OR REPLACE TRIGGER trg_participante_chat_consulta_updated_at BEFORE UPDATE ON participante_chat_consulta FOR EACH ROW EXECUTE FUNCTION actualizar_updated_at();
 CREATE OR REPLACE TRIGGER trg_notificacion_updated_at BEFORE UPDATE ON notificacion FOR EACH ROW EXECUTE FUNCTION actualizar_updated_at();
+CREATE OR REPLACE TRIGGER trg_video_consulta_updated_at BEFORE UPDATE ON video_consulta FOR EACH ROW EXECUTE FUNCTION actualizar_updated_at();
+CREATE OR REPLACE TRIGGER trg_mensaje_video_consulta_updated_at BEFORE UPDATE ON mensaje_video_consulta FOR EACH ROW EXECUTE FUNCTION actualizar_updated_at();
 CREATE OR REPLACE TRIGGER trg_auditoria_updated_at BEFORE UPDATE ON auditoria FOR EACH ROW EXECUTE FUNCTION actualizar_updated_at();

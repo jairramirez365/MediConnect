@@ -2,9 +2,10 @@ const AppError = require('../../utils/AppError');
 const { hashPassword, verifyPassword } = require('../../utils/password');
 const { signAccessToken } = require('../../utils/token');
 const authRepository = require('./auth.repository');
-const { validateLogin, validateRegister } = require('./auth.validator');
+const verificationService = require('./auth.verification.service');
+const { validateLogin, validateRegister, validateResendVerification, validateVerifyContact } = require('./auth.validator');
 
-const activeStatuses = ['activo', 'pendiente_verificacion'];
+const activeStatuses = ['activo'];
 
 function buildSession(user) {
   const token = signAccessToken({
@@ -31,7 +32,7 @@ async function register(payload) {
   }
 
   const passwordHash = await hashPassword(payload.password);
-  const status = payload.role === 'medico' ? 'pendiente_verificacion' : 'activo';
+  const status = 'pendiente_verificacion';
 
   const result = await authRepository.createUserWithProfile({
     email: payload.email,
@@ -43,10 +44,15 @@ async function register(payload) {
     currency: payload.currency
   });
 
+  const verification = await verificationService.issueInitialVerifications(result.user, payload.phoneVerificationChannel);
+
   return {
     ...buildSession(result.user),
+    user: result.user,
     profile: result.profile,
-    balance: result.balance
+    balance: result.balance,
+    verificationRequired: true,
+    verification
   };
 }
 
@@ -60,7 +66,10 @@ async function login(payload) {
   }
 
   if (!activeStatuses.includes(user.status)) {
-    throw new AppError('User is not allowed to login', 403);
+    throw new AppError('Account verification is required before login', 403, {
+      userId: user.id,
+      requiresVerification: true
+    });
   }
 
   const isValidPassword = await verifyPassword(payload.password, user.passwordHash);
@@ -85,8 +94,25 @@ async function getMe(userId) {
   return user;
 }
 
+async function resendVerification(payload) {
+  validateResendVerification(payload);
+  return verificationService.resendVerification(payload);
+}
+
+async function verifyContact(payload) {
+  validateVerifyContact(payload);
+  return verificationService.verifyContact(payload);
+}
+
+async function getVerificationStatus(identifier) {
+  return verificationService.getVerificationStatus(identifier);
+}
+
 module.exports = {
   getMe,
+  getVerificationStatus,
   login,
-  register
+  register,
+  resendVerification,
+  verifyContact
 };

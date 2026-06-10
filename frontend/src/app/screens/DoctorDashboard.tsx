@@ -1,4 +1,4 @@
-import { Calendar, ChevronRight, ClipboardList, Clock3, FileText, ShieldCheck, Sparkles, Stethoscope, UserCircle, Users } from 'lucide-react';
+import { Calendar, ChevronRight, ClipboardList, Clock3, CreditCard, FileText, ShieldCheck, Sparkles, Stethoscope, UserCircle, Users } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
 import { api } from '../../services/api';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncState';
@@ -7,11 +7,13 @@ import { StatusBadge } from '../components/StatusBadge';
 export function DoctorDashboard({
   onGoToSchedule,
   onGoToAppointments,
-  onGoToProfile
+  onGoToProfile,
+  onGoToPayments
 }: {
   onGoToSchedule: () => void;
   onGoToAppointments: () => void;
   onGoToProfile: () => void;
+  onGoToPayments: () => void;
 }) {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -67,6 +69,7 @@ export function DoctorDashboard({
               <ActionChip title="Ver agenda" icon={Calendar} onClick={onGoToSchedule} />
               <ActionChip title="Gestionar citas" icon={ClipboardList} onClick={onGoToAppointments} />
               <ActionChip title="Completar perfil" icon={UserCircle} onClick={onGoToProfile} />
+              <ActionChip title="Ver pagos" icon={CreditCard} onClick={onGoToPayments} />
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">

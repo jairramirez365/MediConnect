@@ -27,6 +27,15 @@ export function CommissionerSchedule({
   const [isLoading, setIsLoading] = useState(true);
   const formRef = useRef<HTMLFormElement | null>(null);
 
+  function getAvailabilityRange() {
+    const today = new Date();
+    const dateFrom = today.toISOString().slice(0, 10);
+    const dateToDate = new Date(today);
+    dateToDate.setDate(today.getDate() + 30);
+    const dateTo = dateToDate.toISOString().slice(0, 10);
+    return { dateFrom, dateTo };
+  }
+
   useEffect(() => {
     setSelectedPatient(selectedPatientId || '');
   }, [selectedPatientId]);
@@ -44,7 +53,7 @@ export function CommissionerSchedule({
         setSelectedCode(codesResponse.data?.[0]?.id || '');
         setDoctors(doctorsResponse.data || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'No fue posible cargar la agenda del comisionista.');
+        setError(err instanceof Error ? err.message : 'No fue posible cargar la agenda del gestor.');
       } finally {
         setIsLoading(false);
       }
@@ -63,11 +72,7 @@ export function CommissionerSchedule({
       }
 
       try {
-        const today = new Date();
-        const dateFrom = today.toISOString().slice(0, 10);
-        const dateToDate = new Date(today);
-        dateToDate.setDate(today.getDate() + 21);
-        const dateTo = dateToDate.toISOString().slice(0, 10);
+        const { dateFrom, dateTo } = getAvailabilityRange();
         const response = await api.doctorAvailability(selectedDoctor, { dateFrom, dateTo });
         const availableSlots = (response.data?.slots || []).filter((slot: any) => slot.isAvailable);
         const dates = Array.from(new Set(availableSlots.map((slot: any) => slot.date)));
@@ -91,11 +96,7 @@ export function CommissionerSchedule({
       }
 
       try {
-        const today = new Date();
-        const dateFrom = today.toISOString().slice(0, 10);
-        const dateToDate = new Date(today);
-        dateToDate.setDate(today.getDate() + 21);
-        const dateTo = dateToDate.toISOString().slice(0, 10);
+        const { dateFrom, dateTo } = getAvailabilityRange();
         const response = await api.doctorAvailability(selectedDoctor, { dateFrom, dateTo });
         const availableSlots = (response.data?.slots || []).filter((slot: any) => slot.isAvailable && slot.date === selectedDate);
         setSlots(availableSlots);
@@ -166,8 +167,8 @@ export function CommissionerSchedule({
       await api.createAppointment(pendingConfirmation.body);
       setMessage(
         pendingConfirmation.body.requiresCommissionAgentInChat
-          ? 'Cita creada correctamente. El paciente recibira una solicitud para aceptar o rechazar tu acompanamiento en chat antes de iniciar.'
-          : 'Cita creada correctamente para tu paciente vinculado.'
+          ? 'Preagendamiento creado. El paciente debe completar el pago PSE en 30 minutos y recibira una solicitud para aceptar o rechazar tu acompanamiento en chat antes de iniciar.'
+          : 'Preagendamiento creado. El paciente debe completar el pago PSE dentro de los proximos 30 minutos para confirmar la cita.'
       );
       formRef.current?.reset();
       setSelectedSlot(null);
@@ -182,7 +183,7 @@ export function CommissionerSchedule({
     }
   }
 
-  if (isLoading) return <LoadingState label="Cargando agenda del comisionista..." />;
+  if (isLoading) return <LoadingState label="Cargando agenda del gestor..." />;
   if (error && !patients.length && !doctors.length) return <ErrorState message={error} />;
 
   return (
@@ -249,7 +250,7 @@ export function CommissionerSchedule({
 
         <div className="mt-6">
           <h3 className="text-lg font-bold text-slate-950">Disponibilidad del medico</h3>
-          <p className="mt-1 text-sm text-slate-500">Al seleccionar el medico te mostramos las proximas fechas con agenda real y luego sus horarios disponibles.</p>
+          <p className="mt-1 text-sm text-slate-500">Al seleccionar el medico te mostramos las proximas fechas con agenda real del siguiente mes y luego sus horarios disponibles.</p>
           {availableDates.length > 0 && (
             <div className="mt-4 flex flex-wrap gap-3">
               {availableDates.map((date) => (
@@ -290,7 +291,7 @@ export function CommissionerSchedule({
             {' - '}
             {requiresAgentChat
               ? 'Se generara una solicitud para que el paciente acepte o rechace tu acompanamiento en chat.'
-              : 'Puedes reservar la cita sin acompanamiento adicional del comisionista.'}
+              : 'Puedes reservar la cita sin acompanamiento adicional del gestor.'}
           </div>
         )}
 
@@ -310,7 +311,7 @@ export function CommissionerSchedule({
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-600">Confirmacion de cita</p>
                 <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Revisa los datos antes de reservar</h2>
                 <p className="mt-2 text-sm leading-7 text-slate-500">
-                  Confirmaremos la cita para evitar reservas duplicadas y asegurar que el paciente quede agendado con la informacion correcta.
+                  Este paso creara un preagendamiento con bloqueo temporal del slot. El paciente tendra 30 minutos para completar el pago PSE y confirmar la cita.
                 </p>
               </div>
               <button
@@ -344,6 +345,10 @@ export function CommissionerSchedule({
               </div>
             )}
 
+            <div className="mt-4 rounded-[22px] border border-blue-100 bg-blue-50 px-4 py-4 text-sm text-blue-700">
+              Si el pago no se confirma dentro del tiempo definido, el preagendamiento expirara y la agenda del medico volvera a quedar disponible.
+            </div>
+
             <div className="mt-6 flex flex-wrap justify-end gap-3">
               <button
                 type="button"
@@ -357,7 +362,7 @@ export function CommissionerSchedule({
                 onClick={confirmAppointment}
                 className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
               >
-                Crear cita
+                Crear preagendamiento
               </button>
             </div>
           </div>

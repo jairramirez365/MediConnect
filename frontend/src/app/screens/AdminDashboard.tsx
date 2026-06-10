@@ -1,9 +1,9 @@
-import { Activity, CalendarDays, ShieldCheck, Users } from 'lucide-react';
+import { Activity, CalendarDays, CreditCard, ShieldCheck, Users, Video } from 'lucide-react';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { api } from '../../services/api';
 import { ErrorState, LoadingState } from '../components/AsyncState';
 
-export function AdminDashboard({ onGoToUsers, onGoToDoctorReview }: { onGoToUsers: () => void; onGoToDoctorReview: () => void }) {
+export function AdminDashboard({ onGoToUsers, onGoToDoctorReview, onGoToPayments, onGoToVideoConsultations }: { onGoToUsers: () => void; onGoToDoctorReview: () => void; onGoToPayments: () => void; onGoToVideoConsultations: () => void }) {
   const [users, setUsers] = useState<any[]>([]);
   const [appointments, setAppointments] = useState<any[]>([]);
   const [pendingDoctors, setPendingDoctors] = useState<any[]>([]);
@@ -67,6 +67,8 @@ export function AdminDashboard({ onGoToUsers, onGoToDoctorReview }: { onGoToUser
             <div className="mt-6 flex flex-wrap gap-3">
               <ActionChip label="Gestionar usuarios" onClick={onGoToUsers} />
               <ActionChip label="Revisar medicos" onClick={onGoToDoctorReview} />
+              <ActionChip label="Controlar pagos" onClick={onGoToPayments} />
+              <ActionChip label="Monitorear videoconsultas" onClick={onGoToVideoConsultations} />
             </div>
           </div>
 
@@ -90,7 +92,7 @@ export function AdminDashboard({ onGoToUsers, onGoToDoctorReview }: { onGoToUser
         </div>
       </section>
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         <MetricCard
           icon={<Users className="h-5 w-5 text-blue-600" />}
           label="Pacientes"
@@ -114,6 +116,18 @@ export function AdminDashboard({ onGoToUsers, onGoToDoctorReview }: { onGoToUser
           label="Revision"
           value={pendingDoctors.length}
           description="Solicitudes por validar"
+        />
+        <MetricCard
+          icon={<Video className="h-5 w-5 text-cyan-600" />}
+          label="Video"
+          value={appointments.filter((appointment) => appointment.careChannel === 'virtual').length}
+          description="Citas virtuales con trazabilidad"
+        />
+        <MetricCard
+          icon={<CreditCard className="h-5 w-5 text-violet-600" />}
+          label="Pagos"
+          value={appointments.filter((appointment) => ['pendiente_confirmacion', 'confirmada', 'completada'].includes(appointment.status)).length}
+          description="Consultas con traza financiera"
         />
       </section>
 
@@ -174,6 +188,11 @@ export function AdminDashboard({ onGoToUsers, onGoToDoctorReview }: { onGoToUser
               title="Monitorear citas proximas"
               description="Asegura que las consultas programadas mantengan continuidad y buena experiencia."
               onClick={onGoToUsers}
+            />
+            <PriorityCard
+              title="Monitorear videoconsultas"
+              description="Verifica sesiones fallidas, accesos activos y consultas virtuales en curso."
+              onClick={onGoToVideoConsultations}
             />
             <PriorityCard
               title="Revisar usuarios bloqueados"

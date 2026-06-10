@@ -1,12 +1,22 @@
 import { Save, UserRound } from 'lucide-react';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { api } from '../../services/api';
 import { useAuth } from '../../store/AuthContext';
+import { ColombiaLocationFields } from '../components/ColombiaLocationFields';
 import { Field } from './DoctorProfile';
 
 export function PatientProfile() {
   const { profile, refreshProfile } = useAuth();
   const [message, setMessage] = useState('');
+  const [departmentCode, setDepartmentCode] = useState('');
+  const [departmentName, setDepartmentName] = useState('');
+  const [municipality, setMunicipality] = useState('');
+
+  useEffect(() => {
+    setDepartmentCode('');
+    setDepartmentName(String(profile?.departamento || ''));
+    setMunicipality(String(profile?.municipio || ''));
+  }, [profile?.departamento, profile?.municipio]);
 
   async function updateProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -20,6 +30,8 @@ export function PatientProfile() {
         birthDate: String(form.get('birthDate') || ''),
         gender: String(form.get('gender') || ''),
         bloodType: String(form.get('bloodType') || ''),
+        department: departmentName,
+        municipality,
         address: String(form.get('address') || ''),
         emergencyContactName: String(form.get('emergencyContactName') || ''),
         emergencyContactPhone: String(form.get('emergencyContactPhone') || ''),
@@ -71,6 +83,20 @@ export function PatientProfile() {
           <Field name="birthDate" label="Fecha de nacimiento" type="date" defaultValue={profile?.fecha_nacimiento?.slice?.(0, 10) || ''} />
           <Field name="gender" label="Genero" defaultValue={profile?.sexo || ''} />
           <Field name="bloodType" label="Tipo de sangre" defaultValue={profile?.tipo_sangre || ''} />
+          <ColombiaLocationFields
+            departmentCode={departmentCode}
+            departmentName={departmentName}
+            municipality={municipality}
+            onDepartmentChange={({ code, name }) => {
+              const departmentChanged = name !== departmentName;
+              setDepartmentCode(code);
+              setDepartmentName(name);
+              if (departmentChanged) {
+                setMunicipality('');
+              }
+            }}
+            onMunicipalityChange={setMunicipality}
+          />
           <Field name="address" label="Direccion" defaultValue={profile?.direccion || ''} />
           <Field name="emergencyContactName" label="Contacto de emergencia" defaultValue={profile?.nombre_contacto_emergencia || ''} />
           <Field name="emergencyContactPhone" label="Telefono de emergencia" defaultValue={profile?.telefono_contacto_emergencia || ''} />
@@ -82,7 +108,7 @@ export function PatientProfile() {
               className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
             />
             <span className="text-sm leading-6 text-slate-600">
-              Autorizo la participacion del comisionista o agente de servicio dentro del chat cuando necesite acompanamiento adicional.
+              Autorizo la participacion del gestor o agente de servicio dentro del chat cuando necesite acompanamiento adicional.
             </span>
           </label>
         </div>

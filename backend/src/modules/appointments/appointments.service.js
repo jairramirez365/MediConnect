@@ -3,6 +3,8 @@ const { writeAudit } = require('../../utils/audit');
 const { isUuid } = require('../../utils/validators');
 const { buildPagination, getPagination } = require('../../utils/pagination');
 const appointmentsRepository = require('./appointments.repository');
+const notificationsService = require('../notifications/notifications.service');
+const videoConsultationService = require('../video-consultations/videoConsultation.service');
 const {
   validateCommissionAgentChatResponse,
   validateCreateAppointment,
@@ -51,6 +53,7 @@ function ensureCanManageAppointment(user, appointment, allowedActions) {
 }
 
 const allowedAppointmentTransitions = {
+  pendiente_pago: ['confirmada', 'cancelada_por_paciente', 'cancelada_por_medico', 'expirada_por_no_pago'],
   pendiente_confirmacion: ['confirmada', 'cancelada_por_paciente', 'cancelada_por_medico', 'reprogramada'],
   confirmada: ['en_curso', 'completada', 'cancelada_por_paciente', 'cancelada_por_medico', 'reprogramada', 'no_asistio_paciente', 'no_asistio_medico', 'fallida'],
   en_curso: ['completada', 'fallida'],
@@ -60,7 +63,8 @@ const allowedAppointmentTransitions = {
   cancelada_por_medico: [],
   no_asistio_paciente: [],
   no_asistio_medico: [],
-  fallida: []
+  fallida: [],
+  expirada_por_no_pago: []
 };
 
 function ensureValidTransition(currentStatus, nextStatus) {
@@ -72,6 +76,7 @@ function ensureValidTransition(currentStatus, nextStatus) {
 }
 
 async function resolveScopedFilters(user, requestedFilters = {}) {
+  await appointmentsRepository.expirePendingPaymentAppointments();
   const actorProfile = await appointmentsRepository.findActorProfile(user);
 
   if (user.role !== 'administrador' && !actorProfile) {
@@ -109,6 +114,7 @@ async function resolveScopedFilters(user, requestedFilters = {}) {
 }
 
 async function createAppointment(payload, user) {
+  await appointmentsRepository.expirePendingPaymentAppointments();
   const actorProfile = await appointmentsRepository.findActorProfile(user);
 
   if (user.role === 'paciente') {
@@ -172,6 +178,9 @@ async function createAppointment(payload, user) {
     case 'doctor_overlap':
       throw new AppError('Doctor already has an appointment in this time range', 409);
     default:
+      if (result.appointment.status === 'confirmada') {
+        await notificationsService.sendAppointmentEventNotifications('cita_agendada', result.appointment.id, user.sub);
+      }
       return result.appointment;
   }
 }
@@ -249,13 +258,21 @@ async function confirmAppointment(appointmentId, user) {
   }
 
   ensureCanManageAppointment(user, appointment, ['doctor']);
+
+  if (appointment.status === 'confirmada') {
+    return appointmentsRepository.findAppointmentDetailById(appointmentId);
+  }
+
   ensureValidTransition(appointment.status, 'confirmada');
 
   const updated = await appointmentsRepository.updateAppointmentBusinessState(appointmentId, {
-    status: 'confirmada'
+    status: 'confirmada',
+    paymentExpiresAt: null,
+    clearPaymentExpiration: true
   });
 
   await writeAudit({ actorUserId: user.sub, entity: 'cita', entityId: appointmentId, action: 'confirmar_cita', newValues: updated });
+  await notificationsService.sendAppointmentEventNotifications('cita_agendada', appointmentId, user.sub);
   return updated;
 }
 
@@ -280,10 +297,14 @@ async function cancelAppointment(appointmentId, payload, user) {
     status,
     cancellationReason: payload.cancellationReason || 'Cancelación solicitada',
     cancelledByUserId: user.sub,
-    cancellationPenalty: penalty
+    cancellationPenalty: penalty,
+    paymentExpiresAt: null,
+    clearPaymentExpiration: true
   });
 
   await writeAudit({ actorUserId: user.sub, entity: 'cita', entityId: appointmentId, action: 'cancelar_cita', newValues: updated });
+  await videoConsultationService.invalidateVideoSessionForAppointment(appointmentId, status, user.sub);
+  await notificationsService.sendAppointmentEventNotifications('cita_cancelada', appointmentId, user.sub);
   return updated;
 }
 
@@ -328,10 +349,14 @@ async function rescheduleAppointment(appointmentId, payload, user) {
     status: 'reprogramada',
     scheduledStartAt: payload.scheduledStartAt,
     scheduledEndAt: payload.scheduledEndAt,
-    freeCancellationDeadline: calculateCancellationWindow(payload.scheduledStartAt)
+    freeCancellationDeadline: calculateCancellationWindow(payload.scheduledStartAt),
+    paymentExpiresAt: null,
+    clearPaymentExpiration: true
   });
 
   await writeAudit({ actorUserId: user.sub, entity: 'cita', entityId: appointmentId, action: 'reprogramar_cita', newValues: updated });
+  await videoConsultationService.invalidateVideoSessionForAppointment(appointmentId, 'reprogramada', user.sub);
+  await notificationsService.sendAppointmentEventNotifications('cita_modificada', appointmentId, user.sub);
   return updated;
 }
 
@@ -354,6 +379,7 @@ async function completeAppointment(appointmentId, user) {
   });
 
   await writeAudit({ actorUserId: user.sub, entity: 'cita', entityId: appointmentId, action: 'completar_cita', newValues: updated });
+  await videoConsultationService.invalidateVideoSessionForAppointment(appointmentId, 'completada', user.sub);
   return updated;
 }
 

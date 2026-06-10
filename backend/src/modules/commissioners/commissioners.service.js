@@ -6,7 +6,7 @@ async function ensureCommissioner(user) {
   const profile = await commissionersRepository.findCommissionerProfileByUserId(user.sub);
 
   if (!profile) {
-    throw new AppError('Commissioner profile not found', 404);
+    throw new AppError('Gestor profile not found', 404);
   }
 
   return profile;

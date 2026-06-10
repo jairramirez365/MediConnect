@@ -7,6 +7,8 @@ const safeUserFields = `
   telefono AS phone,
   rol_codigo AS role,
   estado AS status,
+  correo_verificado_at AS "emailVerifiedAt",
+  telefono_verificado_at AS "phoneVerifiedAt",
   fecha_ultimo_acceso AS "lastLoginAt",
   created_at AS "createdAt"
 `;
@@ -106,12 +108,14 @@ async function createUserWithProfile(payload) {
             fecha_nacimiento,
             sexo,
             tipo_sangre,
+            departamento,
+            municipio,
             direccion,
             nombre_contacto_emergencia,
             telefono_contacto_emergencia,
             autorizo_participacion_comisionista_chat
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
           RETURNING id, nombres, apellidos, numero_documento AS "documentNumber"
         `,
         [
@@ -123,6 +127,8 @@ async function createUserWithProfile(payload) {
           payload.profile.birthDate,
           payload.profile.gender || null,
           payload.profile.bloodType || null,
+          payload.profile.department,
+          payload.profile.municipality,
           payload.profile.address || null,
           payload.profile.emergencyContactName || null,
           payload.profile.emergencyContactPhone || null,
@@ -163,11 +169,13 @@ async function createUserWithProfile(payload) {
             anos_experiencia,
             valor_consulta,
             modalidad_atencion,
+            departamento,
+            municipio,
             ciudad,
             estado_validacion,
             fue_aprobado_por_administrador
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 'pendiente_documentacion', FALSE)
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, 'pendiente_documentacion', FALSE)
           RETURNING id, nombres, apellidos, numero_documento AS "documentNumber", estado_validacion AS "validationStatus"
         `,
         [
@@ -181,7 +189,9 @@ async function createUserWithProfile(payload) {
           payload.profile.yearsOfExperience || 0,
           payload.profile.consultationFee,
           'virtual',
-          payload.profile.city
+          payload.profile.department,
+          payload.profile.municipality,
+          payload.profile.municipality
         ]
       );
 
@@ -211,11 +221,13 @@ async function createUserWithProfile(payload) {
             apellidos,
             tipo_documento,
             numero_documento,
+            departamento,
+            municipio,
             codigo_referido_principal,
             porcentaje_comision_base,
             estado
           )
-          VALUES ($1, $2, $3, $4, $5, $6, $7, 'activo')
+          VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'activo')
           RETURNING id, nombres, apellidos, numero_documento AS "documentNumber", codigo_referido_principal AS "mainReferralCode"
         `,
         [
@@ -224,6 +236,8 @@ async function createUserWithProfile(payload) {
           payload.profile.lastName,
           payload.profile.documentType,
           payload.profile.documentNumber,
+          payload.profile.department,
+          payload.profile.municipality,
           payload.profile.mainReferralCode,
           payload.profile.baseCommissionPercentage
         ]

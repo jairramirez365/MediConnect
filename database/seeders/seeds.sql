@@ -1,5 +1,142 @@
 BEGIN;
 
+ALTER TABLE perfil_paciente
+  ADD COLUMN IF NOT EXISTS departamento VARCHAR(120),
+  ADD COLUMN IF NOT EXISTS municipio VARCHAR(120);
+
+ALTER TABLE perfil_administrador
+  ADD COLUMN IF NOT EXISTS departamento VARCHAR(120),
+  ADD COLUMN IF NOT EXISTS municipio VARCHAR(120);
+
+ALTER TABLE perfil_comisionista
+  ADD COLUMN IF NOT EXISTS departamento VARCHAR(120),
+  ADD COLUMN IF NOT EXISTS municipio VARCHAR(120);
+
+ALTER TABLE perfil_medico
+  ADD COLUMN IF NOT EXISTS departamento VARCHAR(120),
+  ADD COLUMN IF NOT EXISTS municipio VARCHAR(120);
+
+ALTER TABLE notificacion
+  ALTER COLUMN tipo_notificacion TYPE VARCHAR(120);
+
+ALTER TABLE usuario
+  ADD COLUMN IF NOT EXISTS correo_verificado_at TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS telefono_verificado_at TIMESTAMPTZ;
+
+ALTER TABLE notificacion
+  ADD COLUMN IF NOT EXISTS tipo_evento VARCHAR(80),
+  ADD COLUMN IF NOT EXISTS destinatario VARCHAR(255),
+  ADD COLUMN IF NOT EXISTS proveedor VARCHAR(80),
+  ADD COLUMN IF NOT EXISTS proveedor_mensaje_id VARCHAR(120),
+  ADD COLUMN IF NOT EXISTS intentos_envio INTEGER NOT NULL DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS ultimo_intento_envio TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS fecha_entrega TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS fecha_lectura TIMESTAMPTZ,
+  ADD COLUMN IF NOT EXISTS error_envio TEXT,
+  ADD COLUMN IF NOT EXISTS payload JSONB,
+  ADD COLUMN IF NOT EXISTS metadata JSONB;
+
+CREATE TABLE IF NOT EXISTS verificacion_contacto (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  usuario_id UUID NOT NULL,
+  canal VARCHAR(30) NOT NULL,
+  destino VARCHAR(255) NOT NULL,
+  codigo_hash VARCHAR(255) NOT NULL,
+  token_seguro VARCHAR(120),
+  estado VARCHAR(30) NOT NULL DEFAULT 'pendiente',
+  intentos_validacion INTEGER NOT NULL DEFAULT 0,
+  max_intentos_validacion INTEGER NOT NULL DEFAULT 5,
+  intentos_reenvio INTEGER NOT NULL DEFAULT 0,
+  max_reenvios INTEGER NOT NULL DEFAULT 5,
+  fecha_expiracion TIMESTAMPTZ NOT NULL,
+  bloqueado_hasta TIMESTAMPTZ,
+  ultimo_envio_at TIMESTAMPTZ,
+  verificado_at TIMESTAMPTZ,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS conversacion (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  tipo_conversacion VARCHAR(50) NOT NULL,
+  asunto VARCHAR(180),
+  estado VARCHAR(30) NOT NULL DEFAULT 'activa',
+  contexto_tipo VARCHAR(50),
+  contexto_id UUID,
+  ultimo_mensaje_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS participante_conversacion (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversacion_id UUID NOT NULL,
+  usuario_id UUID NOT NULL,
+  rol_usuario VARCHAR(30) NOT NULL,
+  ultima_lectura_at TIMESTAMPTZ,
+  archivada_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS mensaje_conversacion (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  conversacion_id UUID NOT NULL,
+  remitente_usuario_id UUID NOT NULL,
+  tipo_mensaje VARCHAR(30) NOT NULL DEFAULT 'texto',
+  contenido TEXT NOT NULL,
+  metadata JSONB,
+  estado VARCHAR(30) NOT NULL DEFAULT 'enviado',
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS video_consulta (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  cita_id UUID NOT NULL UNIQUE,
+  proveedor VARCHAR(50) NOT NULL,
+  proveedor_sala_id VARCHAR(150) NOT NULL,
+  url_sala TEXT NOT NULL,
+  estado VARCHAR(30) NOT NULL,
+  fecha_habilitacion_acceso TIMESTAMPTZ NOT NULL,
+  fecha_expiracion_acceso TIMESTAMPTZ NOT NULL,
+  fecha_inicio_real TIMESTAMPTZ,
+  fecha_fin_real TIMESTAMPTZ,
+  url_grabacion TEXT,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+
+CREATE TABLE IF NOT EXISTS mensaje_video_consulta (
+  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  video_consulta_id UUID NOT NULL,
+  remitente_usuario_id UUID NOT NULL,
+  rol_remitente VARCHAR(30) NOT NULL,
+  tipo_mensaje VARCHAR(30) NOT NULL DEFAULT 'texto',
+  contenido TEXT NOT NULL,
+  metadata JSONB,
+  created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+  deleted_at TIMESTAMPTZ
+);
+
+ALTER TABLE cita
+  ADD COLUMN IF NOT EXISTS fecha_expiracion_pago TIMESTAMPTZ;
+
+ALTER TABLE cita
+  DROP CONSTRAINT IF EXISTS chk_cita_estado;
+
+ALTER TABLE cita
+  ADD CONSTRAINT chk_cita_estado
+    CHECK (estado IN ('pendiente_pago', 'pendiente_confirmacion', 'confirmada', 'en_curso', 'completada', 'cancelada_por_paciente', 'cancelada_por_medico', 'reprogramada', 'no_asistio_paciente', 'no_asistio_medico', 'fallida', 'expirada_por_no_pago'));
+
 UPDATE medico_especialidad
 SET deleted_at = NOW()
 WHERE deleted_at IS NULL
@@ -96,9 +233,30 @@ UPDATE usuario SET contrasena_hash = 'scrypt$89d2d1b5e99e6f8054c03a3b59bd2670$56
 UPDATE usuario SET contrasena_hash = 'scrypt$b2be9ef31a580b52cf3760d6bc06a5f8$8c0fe3764c5673bf2d2f21022e37be61f4fb7c7fc8b6682c8b4a291869fe75e82f31169dcf315fa6d6d1a2aeb72f6e4ba7d3c545554cae9b0f6b2d680d8437e4' WHERE correo_electronico = 'dra.ruiz@mediconnect.local';
 UPDATE usuario SET contrasena_hash = 'scrypt$d4883133284b12ad61e27979f1eb99e0$96c6f44d2f16d6fe2e2b6441d9bfb87e36031c1478f8b38b0e81ee4e8d2f11af03770e23be14f4918658b6d2c1e5db7682eb31cb762e9cf2f7da18d6b9fae24f' WHERE correo_electronico = 'dr.castro@mediconnect.local';
 
-INSERT INTO perfil_administrador (id, usuario_id, nombre_mostrar, alcance_permisos) VALUES
-  ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'Admin Principal', '{"medicos": "approve", "usuarios": "full", "citas": "full"}')
+UPDATE usuario
+SET correo_verificado_at = COALESCE(correo_verificado_at, NOW() - INTERVAL '30 days'),
+    telefono_verificado_at = COALESCE(telefono_verificado_at, NOW() - INTERVAL '30 days')
+WHERE correo_electronico IN (
+  'admin@mediconnect.local',
+  'dr.lopez@mediconnect.local',
+  'dra.gomez@mediconnect.local',
+  'dr.pendiente@mediconnect.local',
+  'ana.paciente@mediconnect.local',
+  'carlos.paciente@mediconnect.local',
+  'sara.comisionista@mediconnect.local',
+  'luisa.paciente@mediconnect.local',
+  'dra.ruiz@mediconnect.local',
+  'dr.castro@mediconnect.local'
+);
+
+INSERT INTO perfil_administrador (id, usuario_id, nombre_mostrar, departamento, municipio, alcance_permisos) VALUES
+  ('20000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'Admin Principal', 'Bogota, D.C.', 'Bogota, D.C.', '{"medicos": "approve", "usuarios": "full", "citas": "full"}')
 ON CONFLICT (usuario_id) DO NOTHING;
+
+UPDATE perfil_administrador
+SET departamento = 'Bogota, D.C.',
+    municipio = 'Bogota, D.C.'
+WHERE usuario_id = '10000000-0000-0000-0000-000000000001';
 
 INSERT INTO perfil_paciente (
   id, usuario_id, nombres, apellidos, tipo_documento, numero_documento, fecha_nacimiento, sexo, tipo_sangre,
@@ -109,11 +267,35 @@ INSERT INTO perfil_paciente (
   ('30000000-0000-0000-0000-000000000003', '10000000-0000-0000-0000-000000000008', 'Luisa Fernanda', 'Torres', 'CC', '1001001003', '1998-11-15', 'femenino', 'B+', 'Cali, Colombia', 'Julio Torres', '+573101001003', TRUE)
 ON CONFLICT (usuario_id) DO NOTHING;
 
+UPDATE perfil_paciente
+SET departamento = CASE usuario_id
+      WHEN '10000000-0000-0000-0000-000000000005' THEN 'Bogota, D.C.'
+      WHEN '10000000-0000-0000-0000-000000000006' THEN 'Antioquia'
+      WHEN '10000000-0000-0000-0000-000000000008' THEN 'Valle del Cauca'
+      ELSE departamento
+    END,
+    municipio = CASE usuario_id
+      WHEN '10000000-0000-0000-0000-000000000005' THEN 'Bogota, D.C.'
+      WHEN '10000000-0000-0000-0000-000000000006' THEN 'Medellin'
+      WHEN '10000000-0000-0000-0000-000000000008' THEN 'Cali'
+      ELSE municipio
+    END
+WHERE usuario_id IN (
+  '10000000-0000-0000-0000-000000000005',
+  '10000000-0000-0000-0000-000000000006',
+  '10000000-0000-0000-0000-000000000008'
+);
+
 INSERT INTO perfil_comisionista (
   id, usuario_id, nombres, apellidos, tipo_documento, numero_documento, codigo_referido_principal, porcentaje_comision_base, estado
 ) VALUES
   ('40000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000007', 'Sara', 'Mendoza', 'CC', '2002002001', 'SARA-SALUD-01', 12.50, 'activo')
 ON CONFLICT (usuario_id) DO NOTHING;
+
+UPDATE perfil_comisionista
+SET departamento = 'Atlantico',
+    municipio = 'Barranquilla'
+WHERE usuario_id = '10000000-0000-0000-0000-000000000007';
 
 INSERT INTO perfil_medico (
   id, usuario_id, nombres, apellidos, tipo_documento, numero_documento, numero_registro_medico, biografia_profesional,
@@ -126,6 +308,31 @@ INSERT INTO perfil_medico (
   ('50000000-0000-0000-0000-000000000004', '10000000-0000-0000-0000-000000000009', 'Paula', 'Ruiz', 'CC', '3003003004', 'RM-10004', 'Dermatóloga enfocada en control preventivo, cuidado de piel y teleorientación especializada.', 7, 145000, 'virtual', 'Bogotá', 'activo', TRUE, '20000000-0000-0000-0000-000000000001', NOW() - INTERVAL '45 days', 4.90, 16),
   ('50000000-0000-0000-0000-000000000005', '10000000-0000-0000-0000-000000000010', 'Andres', 'Castro', 'CC', '3003003005', 'RM-10005', 'Cardiólogo con experiencia en chequeos preventivos y control de riesgo cardiovascular.', 18, 210000, 'virtual', 'Bucaramanga', 'activo', TRUE, '20000000-0000-0000-0000-000000000001', NOW() - INTERVAL '120 days', 4.70, 21)
 ON CONFLICT (usuario_id) DO NOTHING;
+
+UPDATE perfil_medico
+SET departamento = CASE usuario_id
+      WHEN '10000000-0000-0000-0000-000000000002' THEN 'Bogota, D.C.'
+      WHEN '10000000-0000-0000-0000-000000000003' THEN 'Antioquia'
+      WHEN '10000000-0000-0000-0000-000000000004' THEN 'Valle del Cauca'
+      WHEN '10000000-0000-0000-0000-000000000009' THEN 'Bogota, D.C.'
+      WHEN '10000000-0000-0000-0000-000000000010' THEN 'Santander'
+      ELSE departamento
+    END,
+    municipio = CASE usuario_id
+      WHEN '10000000-0000-0000-0000-000000000002' THEN 'Bogota, D.C.'
+      WHEN '10000000-0000-0000-0000-000000000003' THEN 'Medellin'
+      WHEN '10000000-0000-0000-0000-000000000004' THEN 'Cali'
+      WHEN '10000000-0000-0000-0000-000000000009' THEN 'Bogota, D.C.'
+      WHEN '10000000-0000-0000-0000-000000000010' THEN 'Bucaramanga'
+      ELSE municipio
+    END
+WHERE usuario_id IN (
+  '10000000-0000-0000-0000-000000000002',
+  '10000000-0000-0000-0000-000000000003',
+  '10000000-0000-0000-0000-000000000004',
+  '10000000-0000-0000-0000-000000000009',
+  '10000000-0000-0000-0000-000000000010'
+);
 
 INSERT INTO especialidad (id, nombre, descripcion, estado) VALUES
   ('60000000-0000-0000-0000-000000000001', 'Medicina Interna', 'Atención integral del adulto', 'activa'),
@@ -224,6 +431,11 @@ INSERT INTO cita (
   ('70000000-0000-0000-0000-000000000007', '30000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000004', NULL, NULL, NOW() - INTERVAL '11 days', NOW() - INTERVAL '11 days' + INTERVAL '30 minutes', 'America/Bogota', 'Revision de brote en piel y tratamiento topico', 'primera_vez', 'virtual', 'completada', FALSE, (NOW() - INTERVAL '11 days') - INTERVAL '6 hours', 145000, 36000, NULL, NULL, NOW() - INTERVAL '12 days'),
   ('70000000-0000-0000-0000-000000000008', '30000000-0000-0000-0000-000000000001', '50000000-0000-0000-0000-000000000005', NULL, NULL, NOW() - INTERVAL '6 days', NOW() - INTERVAL '6 days' + INTERVAL '30 minutes', 'America/Bogota', 'Chequeo cardiovascular preventivo', 'seguimiento', 'virtual', 'completada', FALSE, (NOW() - INTERVAL '6 days') - INTERVAL '6 hours', 210000, 52000, NULL, NULL, NOW() - INTERVAL '7 days')
 ON CONFLICT DO NOTHING;
+
+UPDATE cita
+SET estado = 'pendiente_pago',
+    fecha_expiracion_pago = NOW() + INTERVAL '30 minutes'
+WHERE id = '70000000-0000-0000-0000-000000000001';
 
 INSERT INTO historia_clinica (
   id, paciente_id, medico_creador_id, resumen_general, alergias, condiciones_cronicas, medicamentos_actuales, estado

@@ -48,6 +48,7 @@ function validateStatusUpdate(payload) {
   requireFields(payload, ['status']);
 
   const allowedStatuses = [
+    'pendiente_pago',
     'pendiente_confirmacion',
     'confirmada',
     'en_curso',
@@ -57,7 +58,8 @@ function validateStatusUpdate(payload) {
     'reprogramada',
     'no_asistio_paciente',
     'no_asistio_medico',
-    'fallida'
+    'fallida',
+    'expirada_por_no_pago'
   ];
 
   if (!allowedStatuses.includes(payload.status)) {

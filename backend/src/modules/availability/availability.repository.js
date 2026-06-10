@@ -152,7 +152,10 @@ async function listAppointmentsForDoctor(doctorId, dateFrom, dateTo) {
         fecha_hora_fin_programada AS "scheduledEndAt"
       FROM cita
       WHERE medico_id = $1
-        AND estado IN ('pendiente_confirmacion', 'confirmada', 'en_curso')
+        AND (
+          estado IN ('pendiente_confirmacion', 'confirmada', 'en_curso')
+          OR (estado = 'pendiente_pago' AND fecha_expiracion_pago > NOW())
+        )
         AND deleted_at IS NULL
         AND fecha_hora_inicio_programada >= $2::timestamptz
         AND fecha_hora_inicio_programada < $3::timestamptz

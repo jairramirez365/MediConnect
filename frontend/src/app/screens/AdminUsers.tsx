@@ -93,7 +93,7 @@ export function AdminUsers() {
             <option value="">Todos los roles</option>
             <option value="paciente">Pacientes</option>
             <option value="medico">Medicos</option>
-            <option value="comisionista">Comisionistas</option>
+            <option value="comisionista">Gestores</option>
             <option value="administrador">Administradores</option>
           </select>
           <select
@@ -144,7 +144,7 @@ export function AdminUsers() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-6 py-5 text-sm font-medium capitalize text-slate-700">{user.role}</td>
+                    <td className="px-6 py-5 text-sm font-medium capitalize text-slate-700">{formatRoleLabel(user.role)}</td>
                     <td className="px-6 py-5"><StatusBadge status={user.status} /></td>
                     <td className="px-6 py-5 text-sm text-slate-500">
                       {new Date(user.createdAt).toLocaleDateString('es-CO')}
@@ -193,6 +193,17 @@ export function AdminUsers() {
       </div>
     </div>
   );
+}
+
+function formatRoleLabel(role: string) {
+  const roleLabels: Record<string, string> = {
+    paciente: 'Paciente',
+    medico: 'Medico',
+    comisionista: 'Gestor',
+    administrador: 'Administrador'
+  };
+
+  return roleLabels[role] || role;
 }
 
 function SummaryPill({ label, value }: { label: string; value: number }) {

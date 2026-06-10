@@ -4,6 +4,7 @@ const authenticate = require('../../middlewares/authenticate');
 const authorizeRoles = require('../../middlewares/authorizeRoles');
 const asyncHandler = require('../../utils/asyncHandler');
 const appointmentsController = require('./appointments.controller');
+const videoConsultationController = require('../video-consultations/videoConsultation.controller');
 
 const router = express.Router();
 
@@ -19,6 +20,18 @@ router.get(
   '/:id',
   authorizeRoles('paciente', 'medico', 'comisionista', 'administrador'),
   asyncHandler(appointmentsController.getAppointmentDetail)
+);
+
+router.post(
+  '/:appointmentId/video-session',
+  authorizeRoles('paciente', 'medico', 'administrador'),
+  asyncHandler(videoConsultationController.prepareVideoSession)
+);
+
+router.get(
+  '/:appointmentId/video-session',
+  authorizeRoles('paciente', 'medico', 'administrador'),
+  asyncHandler(videoConsultationController.getVideoSession)
 );
 
 router.post(

@@ -21,13 +21,15 @@ type PatientDashboardProps = {
   onGoToBookAppointment: () => void;
   onGoToHistory: () => void;
   onGoToAppointments: () => void;
+  onGoToPayments: () => void;
 };
 
 export function PatientDashboard({
   onGoToSearchDoctors,
   onGoToBookAppointment,
   onGoToHistory,
-  onGoToAppointments
+  onGoToAppointments,
+  onGoToPayments
 }: PatientDashboardProps) {
   const { profile } = useAuth();
   const [appointments, setAppointments] = useState<any[]>([]);
@@ -89,6 +91,7 @@ export function PatientDashboard({
               <ActionChip icon={Calendar} label="Agenda tu proxima cita" onClick={onGoToBookAppointment} />
               <ActionChip icon={Search} label="Buscar medicos" onClick={onGoToSearchDoctors} />
               <ActionChip icon={FileText} label="Ver historial" onClick={onGoToHistory} />
+              <ActionChip icon={Wallet} label="Ver pagos" onClick={onGoToPayments} />
             </div>
           </div>
 

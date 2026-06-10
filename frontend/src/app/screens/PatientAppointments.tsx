@@ -6,10 +6,12 @@ import { StatusBadge } from '../components/StatusBadge';
 
 export function PatientAppointments({
   onBookAppointment,
-  onOpenHistory
+  onOpenHistory,
+  onOpenVideoConsultation
 }: {
   onBookAppointment?: () => void;
   onOpenHistory?: (appointmentId?: string | null) => void;
+  onOpenVideoConsultation?: (appointmentId: string) => void;
 }) {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [filters, setFilters] = useState({
@@ -49,7 +51,7 @@ export function PatientAppointments({
       await api.respondCommissionAgentChatRequest(id, { action });
       await loadAppointments();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No fue posible actualizar la participacion del comisionista en el chat.');
+      setError(err instanceof Error ? err.message : 'No fue posible actualizar la participacion del gestor en el chat.');
     }
   }
 
@@ -185,6 +187,14 @@ export function PatientAppointments({
                           <FileText className="h-4 w-4" />
                           Historial
                         </button>
+                        {appointment.careChannel === 'virtual' && ['confirmada', 'en_curso'].includes(appointment.status) && (
+                          <button
+                            onClick={() => onOpenVideoConsultation?.(appointment.id)}
+                            className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
+                          >
+                            Videoconsulta
+                          </button>
+                        )}
                         {appointment.requiresCommissionAgentInChat && appointment.commissionAgentChatRequestStatus === 'pendiente_paciente' && (
                           <button
                             onClick={() => respondCommissionAgentChatRequest(appointment.id, 'accept')}

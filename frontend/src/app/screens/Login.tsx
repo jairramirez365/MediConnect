@@ -3,16 +3,18 @@ import { Activity, ArrowLeft, ArrowRight, Lock, Mail } from 'lucide-react';
 import { useAuth } from '../../store/AuthContext';
 import { AppBackdrop } from '../components/AppBackdrop';
 import { AuthShowcase } from '../components/AuthShowcase';
+import { ApiError } from '../../services/api';
 
 type LoginProps = {
   onGoRegister: () => void;
   onBackHome: () => void;
+  onRequireVerification: (userId: string) => void;
 };
 
-export function Login({ onGoRegister, onBackHome }: LoginProps) {
+export function Login({ onGoRegister, onBackHome, onRequireVerification }: LoginProps) {
   const { login } = useAuth();
-  const [email, setEmail] = useState('admin@mediconnect.local');
-  const [password, setPassword] = useState('Admin123!');
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -24,6 +26,10 @@ export function Login({ onGoRegister, onBackHome }: LoginProps) {
     try {
       await login(email, password);
     } catch (err) {
+      if (err instanceof ApiError && err.details?.requiresVerification && err.details?.userId) {
+        onRequireVerification(err.details.userId);
+        return;
+      }
       setError(err instanceof Error ? err.message : 'No fue posible iniciar sesion.');
     } finally {
       setIsSubmitting(false);
@@ -47,7 +53,7 @@ export function Login({ onGoRegister, onBackHome }: LoginProps) {
                 </div>
                 <h2 className="text-3xl font-bold text-gray-900">Iniciar sesion</h2>
                 <p className="mt-2 text-sm text-gray-600">
-                  Ingresa con un usuario semilla o con una cuenta creada desde el registro.
+                  Ingresa con tu cuenta para continuar con tu experiencia en MediConnect.
                 </p>
               </div>
               <button onClick={onBackHome} className="flex items-center gap-2 rounded-xl px-3 py-2 text-sm text-gray-600 transition hover:bg-blue-50 hover:text-blue-700">

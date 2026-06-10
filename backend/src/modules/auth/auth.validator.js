@@ -28,7 +28,9 @@ function validateRegister(payload) {
       'lastName',
       'documentType',
       'documentNumber',
-      'birthDate'
+      'birthDate',
+      'department',
+      'municipality'
     ]);
   }
 
@@ -40,7 +42,8 @@ function validateRegister(payload) {
       'documentNumber',
       'medicalLicenseNumber',
       'consultationFee',
-      'city',
+      'department',
+      'municipality',
       'specialtyIds'
     ]);
 
@@ -64,6 +67,8 @@ function validateRegister(payload) {
       'lastName',
       'documentType',
       'documentNumber',
+      'department',
+      'municipality',
       'mainReferralCode',
       'baseCommissionPercentage'
     ]);
@@ -74,7 +79,29 @@ function validateLogin(payload) {
   requireFields(payload, ['email', 'password']);
 }
 
+function validateResendVerification(payload) {
+  requireFields(payload, ['userId']);
+
+  if (payload.channel && !['email', 'sms', 'whatsapp'].includes(payload.channel)) {
+    throw new AppError('Invalid verification channel', 400);
+  }
+}
+
+function validateVerifyContact(payload) {
+  requireFields(payload, ['userId', 'channel']);
+
+  if (!['email', 'sms', 'whatsapp'].includes(payload.channel)) {
+    throw new AppError('Invalid verification channel', 400);
+  }
+
+  if (!payload.code && !payload.token) {
+    throw new AppError('Verification code or secure token is required', 400);
+  }
+}
+
 module.exports = {
   validateRegister,
-  validateLogin
+  validateLogin,
+  validateResendVerification,
+  validateVerifyContact
 };

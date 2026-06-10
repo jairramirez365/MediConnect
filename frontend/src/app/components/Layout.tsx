@@ -1,13 +1,16 @@
-import { ReactNode, useState } from 'react';
+import { ReactNode, useEffect, useState } from 'react';
 import {
   Activity,
+  Bell,
   Calendar,
   ClipboardList,
   Code,
+  CreditCard,
   FileText,
   LayoutDashboard,
   LogOut,
   Menu,
+  MessageCircleMore,
   Settings,
   Stethoscope,
   UserCircle,
@@ -15,6 +18,7 @@ import {
   X
 } from 'lucide-react';
 import type { UiRole } from '../../store/AuthContext';
+import { api } from '../../services/api';
 
 interface LayoutProps {
   children: ReactNode;
@@ -30,7 +34,10 @@ const menuItems = {
     { id: 'doctor-dashboard', label: 'Inicio', icon: LayoutDashboard },
     { id: 'doctor-profile', label: 'Mi Perfil', icon: UserCircle },
     { id: 'doctor-schedule', label: 'Agenda', icon: Calendar },
-    { id: 'doctor-appointments', label: 'Gestion de Citas', icon: ClipboardList }
+    { id: 'doctor-appointments', label: 'Gestion de Citas', icon: ClipboardList },
+    { id: 'doctor-payments', label: 'Pagos', icon: CreditCard },
+    { id: 'notifications-center', label: 'Notificaciones', icon: Bell },
+    { id: 'chat-center', label: 'Chat', icon: MessageCircleMore }
   ],
   patient: [
     { id: 'patient-dashboard', label: 'Inicio', icon: LayoutDashboard },
@@ -38,18 +45,28 @@ const menuItems = {
     { id: 'patient-book-appointment', label: 'Agendar Cita', icon: Calendar },
     { id: 'patient-appointments', label: 'Mis Citas', icon: Calendar },
     { id: 'patient-history', label: 'Historia Clinica', icon: FileText },
+    { id: 'patient-payments', label: 'Pagos', icon: CreditCard },
+    { id: 'notifications-center', label: 'Notificaciones', icon: Bell },
+    { id: 'chat-center', label: 'Chat', icon: MessageCircleMore },
     { id: 'patient-profile', label: 'Mi Perfil', icon: UserCircle }
   ],
   commissioner: [
     { id: 'commissioner-dashboard', label: 'Inicio', icon: LayoutDashboard },
     { id: 'commissioner-codes', label: 'Codigos Referencia', icon: Code },
     { id: 'commissioner-patients', label: 'Pacientes Vinculados', icon: Users },
-    { id: 'commissioner-schedule', label: 'Agendar Citas', icon: Calendar }
+    { id: 'commissioner-schedule', label: 'Agendar Citas', icon: Calendar },
+    { id: 'commissioner-payments', label: 'Pagos', icon: CreditCard },
+    { id: 'notifications-center', label: 'Notificaciones', icon: Bell },
+    { id: 'chat-center', label: 'Chat', icon: MessageCircleMore }
   ],
   admin: [
     { id: 'admin-dashboard', label: 'Inicio', icon: LayoutDashboard },
     { id: 'admin-users', label: 'Gestion Usuarios', icon: Users },
     { id: 'admin-doctor-review', label: 'Revision Medica', icon: ClipboardList },
+    { id: 'admin-payments', label: 'Pagos', icon: CreditCard },
+    { id: 'admin-video-consultations', label: 'Videoconsultas', icon: MessageCircleMore },
+    { id: 'notifications-center', label: 'Notificaciones', icon: Bell },
+    { id: 'chat-center', label: 'Chat', icon: MessageCircleMore },
     { id: 'admin-settings', label: 'Configuracion', icon: Settings }
   ]
 };
@@ -57,14 +74,51 @@ const menuItems = {
 const roleLabels = {
   doctor: 'Medico',
   patient: 'Paciente',
-  commissioner: 'Comisionista',
+  commissioner: 'Gestor',
   admin: 'Administrador'
 };
 
 export function Layout({ children, userRole, currentScreen, onNavigate, userName, onLogout }: LayoutProps) {
   const [isMobileOpen, setIsMobileOpen] = useState(false);
+  const [unreadNotifications, setUnreadNotifications] = useState(0);
+  const [unreadChats, setUnreadChats] = useState(0);
   const currentMenu = menuItems[userRole];
   const currentTitle = currentMenu.find((item) => item.id === currentScreen)?.label || 'Inicio';
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadHeaderSummary() {
+      try {
+        const [notificationsResponse, conversationsResponse] = await Promise.all([
+          api.notificationUnreadSummary(),
+          api.chatConversations()
+        ]);
+
+        if (!mounted) {
+          return;
+        }
+
+        setUnreadNotifications(Number(notificationsResponse.data?.unreadCount || 0));
+        setUnreadChats(
+          (conversationsResponse.data || []).reduce((sum: number, conversation: any) => sum + Number(conversation.unreadCount || 0), 0)
+        );
+      } catch {
+        if (!mounted) {
+          return;
+        }
+        setUnreadNotifications(0);
+        setUnreadChats(0);
+      }
+    }
+
+    loadHeaderSummary();
+    const interval = window.setInterval(loadHeaderSummary, 20000);
+    return () => {
+      mounted = false;
+      window.clearInterval(interval);
+    };
+  }, [userRole, currentScreen]);
 
   const navigate = (screen: string) => {
     onNavigate(screen);
@@ -156,6 +210,30 @@ export function Layout({ children, userRole, currentScreen, onNavigate, userName
                   })}
                 </p>
               </div>
+            </div>
+            <div className="flex items-center gap-3">
+              <button
+                onClick={() => navigate('notifications-center')}
+                className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              >
+                <Bell className="h-5 w-5" />
+                {unreadNotifications > 0 && (
+                  <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-blue-600 px-1.5 py-1 text-[10px] font-semibold text-white">
+                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                  </span>
+                )}
+              </button>
+              <button
+                onClick={() => navigate('chat-center')}
+                className="relative inline-flex h-12 w-12 items-center justify-center rounded-2xl border border-slate-200 bg-white text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              >
+                <MessageCircleMore className="h-5 w-5" />
+                {unreadChats > 0 && (
+                  <span className="absolute -right-1 -top-1 inline-flex min-w-5 items-center justify-center rounded-full bg-emerald-500 px-1.5 py-1 text-[10px] font-semibold text-white">
+                    {unreadChats > 9 ? '9+' : unreadChats}
+                  </span>
+                )}
+              </button>
             </div>
           </div>
         </header>

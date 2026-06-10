@@ -1,5 +1,6 @@
 const { withTransaction } = require('../../database/query');
 const { query } = require('../../database/query');
+const { ensureVideoConsultationSchema } = require('../video-consultations/videoConsultation.repository');
 
 async function findActorProfile(user) {
   const profileByRole = {
@@ -111,13 +112,62 @@ async function createNotification(client, { userId, appointmentId, type, message
   );
 }
 
+async function expirePendingPaymentAppointmentsWithExecutor(executor) {
+  const result = await executor.query(
+    `
+      UPDATE cita
+      SET estado = 'expirada_por_no_pago'
+      WHERE estado = 'pendiente_pago'
+        AND fecha_expiracion_pago IS NOT NULL
+        AND fecha_expiracion_pago <= NOW()
+        AND deleted_at IS NULL
+      RETURNING id
+    `
+  );
+
+  if (result.rowCount > 0) {
+    const appointmentIds = result.rows.map((row) => row.id);
+
+    await executor.query(
+      `
+        UPDATE pago
+        SET estado = 'cancelado', updated_at = NOW()
+        WHERE cita_id = ANY($1::uuid[])
+          AND estado IN ('pendiente', 'autorizado')
+          AND deleted_at IS NULL
+      `,
+      [appointmentIds]
+    );
+
+    await executor.query(
+      `
+        UPDATE notificacion
+        SET estado = 'cancelada', updated_at = NOW()
+        WHERE cita_id = ANY($1::uuid[])
+          AND estado = 'programada'
+          AND deleted_at IS NULL
+      `,
+      [appointmentIds]
+    );
+  }
+
+  return result.rowCount;
+}
+
+async function expirePendingPaymentAppointments() {
+  return expirePendingPaymentAppointmentsWithExecutor({ query });
+}
+
 async function hasOverlappingAppointment(client, doctorId, scheduledStartAt, scheduledEndAt) {
   const result = await client.query(
     `
       SELECT 1
       FROM cita
       WHERE medico_id = $1
-        AND estado IN ('pendiente_confirmacion', 'confirmada', 'en_curso')
+        AND (
+          estado IN ('pendiente_confirmacion', 'confirmada', 'en_curso')
+          OR (estado = 'pendiente_pago' AND fecha_expiracion_pago > NOW())
+        )
         AND deleted_at IS NULL
         AND tstzrange(fecha_hora_inicio_programada, fecha_hora_fin_programada, '[)')
             && tstzrange($2::timestamptz, $3::timestamptz, '[)')
@@ -152,8 +202,29 @@ async function findMatchingAvailability(client, doctorId, scheduledStartAt, sche
   return result.rows[0] || null;
 }
 
+async function isFreeFollowUpEligible(client, patientId, doctorId, scheduledStartAt) {
+  const result = await client.query(
+    `
+      SELECT 1
+      FROM cita
+      WHERE paciente_id = $1
+        AND medico_id = $2
+        AND estado = 'completada'
+        AND deleted_at IS NULL
+        AND fecha_hora_inicio_programada >= ($3::timestamptz - INTERVAL '1 month')
+        AND fecha_hora_inicio_programada < $3::timestamptz
+      LIMIT 1
+    `,
+    [patientId, doctorId, scheduledStartAt]
+  );
+
+  return result.rowCount > 0;
+}
+
 async function createAppointment(payload) {
   return withTransaction(async (client) => {
+    await expirePendingPaymentAppointmentsWithExecutor(client);
+
     const doctor = await findDoctorById(client, payload.doctorId);
     const patient = await findPatientById(client, payload.patientId);
 
@@ -196,6 +267,16 @@ async function createAppointment(payload) {
 
     if (!availability) return { type: 'doctor_unavailable' };
 
+    const isFreeFollowUp =
+      payload.appointmentType === 'seguimiento'
+        ? await isFreeFollowUpEligible(client, payload.patientId, payload.doctorId, payload.scheduledStartAt)
+        : false;
+
+    const consultationFee = isFreeFollowUp ? 0 : Number(doctor.valor_consulta || 0);
+    const appointmentStatus = consultationFee === 0 ? 'confirmada' : 'pendiente_pago';
+    const paymentExpiresAt =
+      consultationFee === 0 ? null : new Date(Date.now() + 30 * 60 * 1000);
+
     const result = await client.query(
       `
         INSERT INTO cita (
@@ -211,12 +292,13 @@ async function createAppointment(payload) {
           canal_atencion,
           estado,
           requiere_comisionista_en_chat,
+          fecha_expiracion_pago,
           fecha_limite_cancelacion_sin_multa,
           valor_consulta,
           valor_multa_cancelacion
         )
-        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, 'pendiente_confirmacion', $11, $12, $13, $14)
-        RETURNING id, estado, fecha_hora_inicio_programada, fecha_hora_fin_programada, valor_consulta
+        VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+        RETURNING id, estado, fecha_hora_inicio_programada, fecha_hora_fin_programada, valor_consulta, fecha_expiracion_pago
       `,
       [
         payload.patientId,
@@ -229,9 +311,11 @@ async function createAppointment(payload) {
         payload.reason,
         payload.appointmentType,
         payload.careChannel,
+        appointmentStatus,
         Boolean(payload.requiresCommissionAgentInChat),
+        paymentExpiresAt,
         payload.cancellationDeadline,
-        doctor.valor_consulta,
+        consultationFee,
         payload.cancellationPenalty
       ]
     );
@@ -280,19 +364,26 @@ async function createAppointment(payload) {
         userId: patient.usuario_id,
         appointmentId: appointment.id,
         type: 'solicitud_participacion_comisionista_chat_pendiente',
-        message: 'Tu comisionista solicito acompanarte en el chat de esta consulta. Podras aceptarlo o rechazarlo antes de iniciar.',
+        message: 'Tu gestor solicito acompanarte en el chat de esta consulta. Podras aceptarlo o rechazarlo antes de iniciar.',
         scheduledAt: new Date(new Date(payload.scheduledStartAt).getTime() - 5 * 60 * 1000)
       });
     }
 
     return {
       type: 'created',
-      appointment
+      appointment: {
+        ...appointment,
+        isFreeFollowUp,
+        requiresPayment: consultationFee > 0
+      }
     };
   });
 }
 
 async function listAppointments(filters) {
+  await expirePendingPaymentAppointments();
+  await ensureVideoConsultationSchema();
+
   const values = [];
   const conditions = ['c.deleted_at IS NULL'];
 
@@ -329,6 +420,7 @@ async function listAppointments(filters) {
       c.paciente_id AS "patientId",
       c.medico_id AS "doctorId",
       c.estado AS status,
+      c.fecha_expiracion_pago AS "paymentExpiresAt",
       c.fecha_hora_inicio_programada AS "scheduledStartAt",
       c.fecha_hora_fin_programada AS "scheduledEndAt",
       c.zona_horaria AS "timeZone",
@@ -342,6 +434,10 @@ async function listAppointments(filters) {
       CONCAT(pp.nombres, ' ', pp.apellidos) AS patient,
       CONCAT(pm.nombres, ' ', pm.apellidos) AS doctor,
       specialties.specialties AS "doctorSpecialties",
+      video_session.id AS "videoConsultationId",
+      video_session.status AS "videoConsultationStatus",
+      video_session."accessStartsAt" AS "videoConsultationAccessStartsAt",
+      video_session."accessEndsAt" AS "videoConsultationAccessEndsAt",
       chat_request.status AS "commissionAgentChatRequestStatus",
       chat_request."scheduledAt" AS "commissionAgentChatRequestAt",
       COUNT(*) OVER()::int AS total
@@ -355,6 +451,17 @@ async function listAppointments(filters) {
       WHERE me.medico_id = c.medico_id
         AND me.deleted_at IS NULL
     ) specialties ON TRUE
+    LEFT JOIN LATERAL (
+      SELECT
+        vc.id,
+        vc.estado AS status,
+        vc.fecha_habilitacion_acceso AS "accessStartsAt",
+        vc.fecha_expiracion_acceso AS "accessEndsAt"
+      FROM video_consulta vc
+      WHERE vc.cita_id = c.id
+        AND vc.deleted_at IS NULL
+      LIMIT 1
+    ) video_session ON TRUE
     LEFT JOIN LATERAL (
       SELECT
         CASE
@@ -406,6 +513,8 @@ async function updateAppointmentStatus(appointmentId, status, cancellationReason
 }
 
 async function findAppointmentById(appointmentId) {
+  await expirePendingPaymentAppointments();
+
   const result = await query(
     `
       SELECT
@@ -417,6 +526,7 @@ async function findAppointmentById(appointmentId) {
         c.comisionista_id AS "commissionAgentId",
         pc.usuario_id AS "commissionAgentUserId",
         c.estado AS status,
+        c.fecha_expiracion_pago AS "paymentExpiresAt",
         c.fecha_hora_inicio_programada AS "scheduledStartAt",
         c.fecha_hora_fin_programada AS "scheduledEndAt",
         c.valor_multa_cancelacion AS "cancellationPenalty",
@@ -436,6 +546,9 @@ async function findAppointmentById(appointmentId) {
 }
 
 async function findAppointmentDetailById(appointmentId) {
+  await expirePendingPaymentAppointments();
+  await ensureVideoConsultationSchema();
+
   const result = await query(
     `
       SELECT
@@ -447,6 +560,7 @@ async function findAppointmentDetailById(appointmentId) {
         c.comisionista_id AS "commissionAgentId",
         pc.usuario_id AS "commissionAgentUserId",
         c.estado AS status,
+        c.fecha_expiracion_pago AS "paymentExpiresAt",
         c.fecha_hora_inicio_programada AS "scheduledStartAt",
         c.fecha_hora_fin_programada AS "scheduledEndAt",
         c.zona_horaria AS "timeZone",
@@ -460,6 +574,10 @@ async function findAppointmentDetailById(appointmentId) {
         CONCAT(pp.nombres, ' ', pp.apellidos) AS patient,
         CONCAT(pm.nombres, ' ', pm.apellidos) AS doctor,
         specialties.specialties AS "doctorSpecialties",
+        video_session.id AS "videoConsultationId",
+        video_session.status AS "videoConsultationStatus",
+        video_session."accessStartsAt" AS "videoConsultationAccessStartsAt",
+        video_session."accessEndsAt" AS "videoConsultationAccessEndsAt",
         chat_request.status AS "commissionAgentChatRequestStatus",
         chat_request."scheduledAt" AS "commissionAgentChatRequestAt",
         note.id AS "clinicalNoteId",
@@ -502,6 +620,17 @@ async function findAppointmentDetailById(appointmentId) {
       ) specialties ON TRUE
       LEFT JOIN LATERAL (
         SELECT
+          vc.id,
+          vc.estado AS status,
+          vc.fecha_habilitacion_acceso AS "accessStartsAt",
+          vc.fecha_expiracion_acceso AS "accessEndsAt"
+        FROM video_consulta vc
+        WHERE vc.cita_id = c.id
+          AND vc.deleted_at IS NULL
+        LIMIT 1
+      ) video_session ON TRUE
+      LEFT JOIN LATERAL (
+        SELECT
           CASE
             WHEN n.tipo_notificacion = 'solicitud_participacion_comisionista_chat_aceptada' THEN 'aceptada'
             WHEN n.tipo_notificacion = 'solicitud_participacion_comisionista_chat_rechazada' THEN 'rechazada'
@@ -535,6 +664,10 @@ async function findAppointmentDetailById(appointmentId) {
         pm.usuario_id,
         pc.usuario_id,
         specialties.specialties,
+        video_session.id,
+        video_session.status,
+        video_session."accessStartsAt",
+        video_session."accessEndsAt",
         chat_request.status,
         chat_request."scheduledAt",
         note.id,
@@ -576,7 +709,11 @@ async function updateAppointmentBusinessState(appointmentId, payload) {
         fecha_hora_inicio_programada = COALESCE($5, fecha_hora_inicio_programada),
         fecha_hora_fin_programada = COALESCE($6, fecha_hora_fin_programada),
         fecha_limite_cancelacion_sin_multa = COALESCE($7, fecha_limite_cancelacion_sin_multa),
-        valor_multa_cancelacion = COALESCE($8, valor_multa_cancelacion)
+        valor_multa_cancelacion = COALESCE($8, valor_multa_cancelacion),
+        fecha_expiracion_pago = CASE
+          WHEN $10::boolean THEN $9
+          ELSE fecha_expiracion_pago
+        END
       WHERE id = $1
         AND deleted_at IS NULL
       RETURNING
@@ -584,6 +721,7 @@ async function updateAppointmentBusinessState(appointmentId, payload) {
         estado AS status,
         motivo_cancelacion AS "cancellationReason",
         valor_multa_cancelacion AS "cancellationPenalty",
+        fecha_expiracion_pago AS "paymentExpiresAt",
         fecha_hora_inicio_programada AS "scheduledStartAt",
         fecha_hora_fin_programada AS "scheduledEndAt"
     `,
@@ -595,7 +733,9 @@ async function updateAppointmentBusinessState(appointmentId, payload) {
       payload.scheduledStartAt || null,
       payload.scheduledEndAt || null,
       payload.freeCancellationDeadline || null,
-      payload.cancellationPenalty ?? null
+      payload.cancellationPenalty ?? null,
+      payload.paymentExpiresAt ?? null,
+      payload.clearPaymentExpiration ?? false
     ]
   );
 
@@ -685,8 +825,8 @@ async function respondCommissionAgentChatRequest(appointment, action) {
         : 'solicitud_participacion_comisionista_chat_rechazada';
     const patientMessage =
       action === 'accept'
-        ? 'Aceptaste la participacion del comisionista en el chat de esta consulta.'
-        : 'Rechazaste la participacion del comisionista en el chat de esta consulta.';
+        ? 'Aceptaste la participacion del gestor en el chat de esta consulta.'
+        : 'Rechazaste la participacion del gestor en el chat de esta consulta.';
     const commissionAgentMessage =
       action === 'accept'
         ? 'El paciente acepto tu participacion en el chat de la consulta.'
@@ -716,6 +856,8 @@ async function respondCommissionAgentChatRequest(appointment, action) {
 
 async function validateSlotForReschedule(doctorId, appointmentId, scheduledStartAt, scheduledEndAt) {
   return withTransaction(async (client) => {
+    await expirePendingPaymentAppointmentsWithExecutor(client);
+
     const availability = await findMatchingAvailability(client, doctorId, scheduledStartAt, scheduledEndAt);
 
     if (!availability) {
@@ -728,7 +870,10 @@ async function validateSlotForReschedule(doctorId, appointmentId, scheduledStart
         FROM cita
         WHERE medico_id = $1
           AND id <> $2
-          AND estado IN ('pendiente_confirmacion', 'confirmada', 'en_curso')
+          AND (
+            estado IN ('pendiente_confirmacion', 'confirmada', 'en_curso')
+            OR (estado = 'pendiente_pago' AND fecha_expiracion_pago > NOW())
+          )
           AND deleted_at IS NULL
           AND tstzrange(fecha_hora_inicio_programada, fecha_hora_fin_programada, '[)')
               && tstzrange($3::timestamptz, $4::timestamptz, '[)')
@@ -747,6 +892,7 @@ async function validateSlotForReschedule(doctorId, appointmentId, scheduledStart
 
 module.exports = {
   createAppointment,
+  expirePendingPaymentAppointments,
   findActorProfile,
   findAppointmentById,
   findAppointmentDetailById,

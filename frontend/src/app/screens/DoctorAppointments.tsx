@@ -4,7 +4,7 @@ import { api } from '../../services/api';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncState';
 import { StatusBadge } from '../components/StatusBadge';
 
-export function DoctorAppointments() {
+export function DoctorAppointments({ onOpenVideoConsultation }: { onOpenVideoConsultation?: (appointmentId: string) => void }) {
   const [appointments, setAppointments] = useState<any[]>([]);
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
@@ -106,6 +106,14 @@ export function DoctorAppointments() {
                           className="rounded-2xl border border-red-200 bg-red-50 p-2 text-red-700 transition hover:bg-red-100"
                         >
                           <XCircle className="h-4 w-4" />
+                        </button>
+                      )}
+                      {appointment.status === 'confirmada' && (
+                        <button
+                          onClick={() => onOpenVideoConsultation?.(appointment.id)}
+                          className="inline-flex items-center gap-2 rounded-2xl border border-blue-200 bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-100"
+                        >
+                          Videoconsulta
                         </button>
                       )}
                       {appointment.status === 'confirmada' && (
