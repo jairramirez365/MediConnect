@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>MediConnect - Registro de prueba</title>
+    <style>
+      :root {
+        color-scheme: light;
+        --ink: #102027;
+        --muted: #5c6b73;
+        --line: #d7e2e8;
+        --brand: #0d7c66;
+        --soft: #eef8f4;
+        --danger: #a62639;
+      }
+
+      body {
+        margin: 0;
+        font-family: Georgia, "Times New Roman", serif;
+        color: var(--ink);
+        background: radial-gradient(circle at top left, #dff4ec, transparent 36rem), #f7faf9;
+      }
+
+      main {
+        width: min(920px, calc(100% - 32px));
+        margin: 40px auto;
+        display: grid;
+        gap: 24px;
+      }
+
+      section {
+        background: rgba(255, 255, 255, 0.9);
+        border: 1px solid var(--line);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 20px 60px rgba(16, 32, 39, 0.08);
+      }
+
+      h1 {
+        margin: 0;
+        font-size: clamp(32px, 5vw, 54px);
+      }
+
+      p {
+        color: var(--muted);
+      }
+
+      form {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+        gap: 14px;
+      }
+
+      label {
+        display: grid;
+        gap: 6px;
+        font-weight: 700;
+      }
+
+      input,
+      select,
+      textarea,
+      button {
+        border: 1px solid var(--line);
+        border-radius: 12px;
+        padding: 12px 14px;
+        font: inherit;
+      }
+
+      textarea {
+        min-height: 86px;
+        resize: vertical;
+      }
+
+      button {
+        cursor: pointer;
+        border: 0;
+        color: white;
+        background: var(--brand);
+        font-weight: 700;
+      }
+
+      pre {
+        overflow: auto;
+        border-radius: 16px;
+        padding: 16px;
+        background: #102027;
+        color: #e8fff8;
+      }
+
+      .full {
+        grid-column: 1 / -1;
+      }
+
+      .doctor-only,
+      .patient-only {
+        display: contents;
+      }
+
+      @media (max-width: 720px) {
+        form {
+          grid-template-columns: 1fr;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <header>
+        <h1>Registro de prueba</h1>
+        <p>Formulario temporal para validar que el backend crea usuario, perfil y saldo desde inputs.</p>
+      </header>
+
+      <section>
+        <form id="registerForm">
+          <label>
+            Rol
+            <select id="role" name="role">
+              <option value="paciente">Paciente</option>
+              <option value="medico">Médico</option>
+            </select>
+          </label>
+
+          <label>
+            Correo
+            <input name="email" type="email" required value="nuevo.paciente@example.com" />
+          </label>
+
+          <label>
+            Contraseña
+            <input name="password" type="password" required value="Paciente123!" />
+          </label>
+
+          <label>
+            Teléfono
+            <input name="phone" value="+573001234567" />
+          </label>
+
+          <label>
+            Nombres
+            <input name="firstName" required value="Nuevo" />
+          </label>
+
+          <label>
+            Apellidos
+            <input name="lastName" required value="Usuario" />
+          </label>
+
+          <label>
+            Tipo documento
+            <input name="documentType" required value="CC" />
+          </label>
+
+          <label>
+            Número documento
+            <input name="documentNumber" required value="999001" />
+          </label>
+
+          <div class="patient-only">
+            <label>
+              Fecha nacimiento
+              <input name="birthDate" type="date" value="1994-06-10" />
+            </label>
+
+            <label>
+              Sexo
+              <input name="gender" value="femenino" />
+            </label>
+
+            <label>
+              Tipo sangre
+              <input name="bloodType" value="O+" />
+            </label>
+
+            <label>
+              Dirección
+              <input name="address" value="Bogotá, Colombia" />
+            </label>
+          </div>
+
+          <div class="doctor-only">
+            <label>
+              Registro médico
+              <input name="medicalLicenseNumber" value="RM-NEW-001" />
+            </label>
+
+            <label>
+              Valor consulta
+              <input name="consultationFee" type="number" value="150000" />
+            </label>
+
+            <label>
+              Modalidad
+              <select name="careMode">
+                <option value="virtual">Virtual</option>
+                <option value="presencial">Presencial</option>
+                <option value="hibrida">Híbrida</option>
+              </select>
+            </label>
+
+            <label>
+              Ciudad
+              <input name="city" value="Bogotá" />
+            </label>
+
+            <label class="full">
+              Bio profesional
+              <textarea name="professionalBio">Registro básico de médico para validación documental.</textarea>
+            </label>
+          </div>
+
+          <button class="full" type="submit">Registrar usuario</button>
+        </form>
+      </section>
+
+      <section>
+        <h2>Respuesta del backend</h2>
+        <pre id="output">Completa el formulario y envía el registro.</pre>
+      </section>
+    </main>
+
+    <script>
+      const form = document.querySelector("#registerForm");
+      const output = document.querySelector("#output");
+      const role = document.querySelector("#role");
+      const patientFields = document.querySelectorAll(".patient-only input");
+      const doctorFields = document.querySelectorAll(".doctor-only input, .doctor-only select, .doctor-only textarea");
+
+      function syncFields() {
+        const isDoctor = role.value === "medico";
+        document.querySelectorAll(".doctor-only").forEach((item) => {
+          item.style.display = isDoctor ? "contents" : "none";
+        });
+        document.querySelectorAll(".patient-only").forEach((item) => {
+          item.style.display = isDoctor ? "none" : "contents";
+        });
+        patientFields.forEach((input) => {
+          input.disabled = isDoctor;
+        });
+        doctorFields.forEach((input) => {
+          input.disabled = !isDoctor;
+        });
+      }
+
+      role.addEventListener("change", syncFields);
+      syncFields();
+
+      form.addEventListener("submit", async (event) => {
+        event.preventDefault();
+        const data = Object.fromEntries(new FormData(form));
+        const selectedRole = data.role;
+
+        const profile = {
+          firstName: data.firstName,
+          lastName: data.lastName,
+          documentType: data.documentType,
+          documentNumber: data.documentNumber
+        };
+
+        if (selectedRole === "paciente") {
+          Object.assign(profile, {
+            birthDate: data.birthDate,
+            gender: data.gender,
+            bloodType: data.bloodType,
+            address: data.address,
+            authorizesCommissionAgentChat: true
+          });
+        }
+
+        if (selectedRole === "medico") {
+          Object.assign(profile, {
+            medicalLicenseNumber: data.medicalLicenseNumber,
+            consultationFee: Number(data.consultationFee),
+            careMode: data.careMode,
+            city: data.city,
+            professionalBio: data.professionalBio,
+            yearsOfExperience: 0
+          });
+        }
+
+        const response = await fetch("/api/v1/auth/register", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            email: data.email,
+            password: data.password,
+            phone: data.phone,
+            role: selectedRole,
+            profile
+          })
+        });
+
+        const body = await response.json();
+        output.textContent = JSON.stringify({ status: response.status, body }, null, 2);
+      });
+    </script>
+  </body>
+</html>

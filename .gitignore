@@ -1,9 +1,2 @@
-.env
-/package-lock.json
-backend/node_modules/
-backend/.env
-frontend/.env
-frontend/node_modules/
-frontend/dist/
-.vscode/
-tmp-*.log
+# Intentionally left without ignore rules so the repository can track
+# the full project contents, including generated artifacts and local config.
