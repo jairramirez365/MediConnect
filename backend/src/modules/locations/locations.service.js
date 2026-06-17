@@ -1,4 +1,5 @@
 const AppError = require('../../utils/AppError');
+const colombiaLocations = require('./colombiaLocations.data');
 
 const CACHE_TTL_MS = 12 * 60 * 60 * 1000;
 const DANE_TIMEOUT_MS = 10000;
@@ -76,10 +77,18 @@ async function listDepartments() {
     return departmentsCache.data;
   }
 
-  const features = await fetchDaneData(
-    DANE_DEPARTMENTS_QUERY_URL,
-    'Could not retrieve departments from the DANE official source'
-  );
+  let features;
+
+  try {
+    features = await fetchDaneData(
+      DANE_DEPARTMENTS_QUERY_URL,
+      'Could not retrieve departments from the DANE official source'
+    );
+  } catch (error) {
+    departmentsCache.data = colombiaLocations.departments;
+    departmentsCache.expiresAt = Date.now() + CACHE_TTL_MS;
+    return departmentsCache.data;
+  }
 
   const departments = Array.from(
     features.reduce((accumulator, feature) => {
@@ -115,10 +124,23 @@ async function listMunicipalities(departmentCode) {
     return cachedMunicipalities;
   }
 
-  const features = await fetchDaneData(
-    buildMunicipalitiesQueryUrl(departmentCode),
-    'Could not retrieve municipalities from the DANE official source'
-  );
+  let features;
+
+  try {
+    features = await fetchDaneData(
+      buildMunicipalitiesQueryUrl(departmentCode),
+      'Could not retrieve municipalities from the DANE official source'
+    );
+  } catch (error) {
+    const fallbackMunicipalities = colombiaLocations.municipalities
+      .filter((municipality) => municipality.departmentCode === departmentCode)
+      .sort((left, right) => left.name.localeCompare(right.name, 'es'));
+
+    municipalitiesCache.data.set(departmentCode, fallbackMunicipalities);
+    municipalitiesCache.expiresAt = Date.now() + CACHE_TTL_MS;
+
+    return fallbackMunicipalities;
+  }
 
   const municipalities = Array.from(
     features.reduce((accumulator, feature) => {
