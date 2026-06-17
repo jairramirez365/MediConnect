@@ -22,7 +22,8 @@ module.exports = {
     port: Number(process.env.DB_PORT),
     database: process.env.DB_NAME,
     user: process.env.DB_USER,
-    password: process.env.DB_PASSWORD
+    password: process.env.DB_PASSWORD,
+    ssl: process.env.DB_SSL === 'true'
   },
   auth: {
     jwtSecret: process.env.JWT_SECRET,
