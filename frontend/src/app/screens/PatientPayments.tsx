@@ -1,10 +1,20 @@
-import { AlertCircle, Calendar, CheckCircle2, CreditCard, ExternalLink, Landmark, Receipt, Wallet } from 'lucide-react';
+import { AlertCircle, Calendar, CheckCircle2, CreditCard, ExternalLink, Landmark, Wallet } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { api } from '../../services/api';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncState';
 import { StatusBadge } from '../components/StatusBadge';
 
+const EASE = [0.16, 1, 0.3, 1] as const;
+
+const metricTones: Record<string, string> = {
+  emerald: 'from-emerald-500 to-teal-600',
+  amber: 'from-amber-500 to-orange-600',
+  violet: 'from-violet-500 to-fuchsia-600'
+};
+
 export function PatientPayments() {
+  const reduce = useReducedMotion();
   const [payments, setPayments] = useState<any[]>([]);
   const [summary, setSummary] = useState<any | null>(null);
   const [payableAppointments, setPayableAppointments] = useState<any[]>([]);
@@ -76,26 +86,31 @@ export function PatientPayments() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[32px] border border-white/80 bg-[linear-gradient(135deg,_#0f4fcf_0%,_#60a5fa_60%,_#dbeafe_100%)] p-6 text-white shadow-[0_28px_80px_rgba(37,99,235,0.18)] md:p-8">
-        <div className="grid gap-6 lg:grid-cols-[1fr_0.95fr] lg:items-end">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/16 px-4 py-2 text-sm font-semibold text-white/95">
-              <Landmark className="h-4 w-4" />
-              Pagos conectados
-            </div>
-            <h1 className="mt-5 text-4xl font-black tracking-[-0.05em] md:text-5xl">Tus pagos y consultas</h1>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-blue-50 md:text-lg">
-              Revisa el estado de tus transacciones, identifica citas pendientes de pago y avanza por un checkout preparado para integracion PSE.
-            </p>
+      <motion.section
+        initial={reduce ? false : { opacity: 0, y: 22, scale: 0.99 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: EASE }}
+        className="relative overflow-hidden rounded-[32px] border border-white/80 bg-[linear-gradient(135deg,_#7e22ce_0%,_#c026d3_45%,_#db2777_100%)] p-7 text-center text-white shadow-[0_30px_90px_rgba(192,38,211,0.30)] md:p-9"
+      >
+        <div aria-hidden className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/15 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-16 -left-10 h-52 w-52 rounded-full bg-pink-300/25 blur-3xl" />
+        <div className="relative flex flex-col items-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
+            <Landmark className="h-4 w-4" />
+            Pagos conectados
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <h1 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Tus pagos y consultas</h1>
+          <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-fuchsia-50 md:text-base">
+            Revisa el estado de tus transacciones, identifica citas pendientes de pago y avanza por un checkout preparado para integración PSE.
+          </p>
+          <div className="mt-6 grid w-full max-w-2xl grid-cols-2 gap-3 lg:grid-cols-4">
             <HeroMiniCard title="Pagado" value={`$${Number(summary?.paidAmount || 0).toLocaleString('es-CO')}`} icon={Wallet} />
             <HeroMiniCard title="Pendiente" value={`$${Number(summary?.pendingAmount || 0).toLocaleString('es-CO')}`} icon={CreditCard} />
             <HeroMiniCard title="Saldo a favor" value={`$${Number(summary?.availableBalance || 0).toLocaleString('es-CO')}`} icon={CheckCircle2} />
             <HeroMiniCard title="Citas pagables" value={summary?.payableAppointmentsCount || payableAppointments.length} icon={Calendar} />
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {message && <div className="rounded-2xl border border-blue-100 bg-blue-50 px-4 py-3 text-sm text-blue-700">{message}</div>}
       {error && <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
@@ -110,7 +125,7 @@ export function PatientPayments() {
           </div>
 
           {payableAppointments.length === 0 ? (
-            <EmptyState title="Sin citas por pagar" description="Tus consultas programadas ya fueron atendidas en pagos o aun no requieren transaccion." />
+            <EmptyState title="Sin citas por pagar" description="Tus consultas programadas ya fueron atendidas en pagos o aún no requieren transacción." />
           ) : (
             <div className="space-y-4">
               {payableAppointments.map((appointment) => (
@@ -137,7 +152,7 @@ export function PatientPayments() {
                       </p>
                       <button
                         onClick={() => startPseCheckout(appointment.id)}
-                        className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                        className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl bg-gradient-to-r from-fuchsia-600 to-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-fuchsia-600/25 transition hover:from-fuchsia-700 hover:to-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500 focus-visible:ring-offset-2"
                       >
                         Iniciar pago PSE
                         <ExternalLink className="h-4 w-4" />
@@ -155,17 +170,17 @@ export function PatientPayments() {
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
                 <h2 className="text-2xl font-bold text-slate-950">Actividad reciente</h2>
-                <p className="mt-1 text-sm text-slate-500">Tus ultimas transacciones y su estado operativo.</p>
+                <p className="mt-1 text-sm text-slate-500">Tus últimas transacciones y su estado operativo.</p>
               </div>
               <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">
                 {payments.length} movimientos
               </span>
             </div>
 
-            <div className="grid gap-4 md:grid-cols-3">
-              <MetricCard title="Pagos realizados" value={summary?.paidTransactions || 0} subtitle="Transacciones exitosas" />
-              <MetricCard title="Pendientes" value={summary?.pendingTransactions || pendingTransactions.length} subtitle="En validacion o por confirmar" />
-              <MetricCard title="PSE" value={summary?.pseTransactions || 0} subtitle="Transacciones preparadas por pasarela" />
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
+              <MetricCard title="Pagos realizados" value={summary?.paidTransactions || 0} subtitle="Transacciones exitosas" icon={CheckCircle2} tone="emerald" />
+              <MetricCard title="Pendientes" value={summary?.pendingTransactions || pendingTransactions.length} subtitle="En validación o por confirmar" icon={AlertCircle} tone="amber" />
+              <MetricCard title="PSE" value={summary?.pseTransactions || 0} subtitle="Transacciones preparadas por pasarela" icon={Landmark} tone="violet" />
             </div>
           </div>
 
@@ -173,12 +188,12 @@ export function PatientPayments() {
             <div className="grid gap-4 md:grid-cols-[1fr_auto_auto]">
               <FilterInput label="Buscar" value={filters.search} onChange={(value) => setFilters((current) => ({ ...current, search: value }))} />
               <SelectFilter label="Estado" value={filters.status} onChange={(value) => setFilters((current) => ({ ...current, status: value }))} options={['pagado', 'pendiente', 'autorizado', 'reembolsado', 'fallido']} />
-              <button onClick={loadPayments} className="self-end rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700">Aplicar filtro</button>
+              <button onClick={loadPayments} className="min-h-[44px] self-end rounded-2xl bg-gradient-to-r from-fuchsia-600 to-violet-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-fuchsia-600/25 transition hover:from-fuchsia-700 hover:to-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500 focus-visible:ring-offset-2">Aplicar filtro</button>
             </div>
 
             <div className="mt-6 space-y-4">
               {payments.length === 0 ? (
-                <EmptyState title="Sin pagos registrados" description="Tus pagos confirmados y pendientes apareceran aqui cuando haya movimiento real." />
+                <EmptyState title="Sin pagos registrados" description="Tus pagos confirmados y pendientes aparecerán aquí cuando haya movimiento real." />
               ) : (
                 payments.map((payment) => (
                   <div key={payment.id} className="rounded-[22px] bg-slate-50 p-4">
@@ -213,7 +228,7 @@ export function PatientPayments() {
                 <p className="text-sm font-semibold uppercase tracking-[0.24em] text-blue-600">Checkout PSE Staging</p>
                 <h2 className="mt-2 text-2xl font-black tracking-[-0.04em] text-slate-950">Pago preparado para pasarela</h2>
                 <p className="mt-2 text-sm leading-7 text-slate-500">
-                  Esta interfaz ya usa la arquitectura de checkout. En produccion, este paso redirigira al proveedor PSE con `returnUrl` y `notifyUrl`.
+                  Esta interfaz ya usa la arquitectura de checkout. En producción, este paso redirigirá al proveedor PSE con `returnUrl` y `notifyUrl`.
                 </p>
               </div>
               <button type="button" onClick={() => setCheckout(null)} className="rounded-2xl border border-slate-200 px-4 py-2 text-sm font-semibold text-slate-600 transition hover:border-slate-300 hover:text-slate-900">
@@ -232,7 +247,7 @@ export function PatientPayments() {
               <div className="flex items-start gap-3">
                 <AlertCircle className="mt-0.5 h-5 w-5 shrink-0" />
                 <p>
-                  En este entorno simulamos la respuesta de la pasarela. Cuando staging publico este disponible, este mismo contrato se podra conectar a PSE real sin cambiar la experiencia del usuario.
+                  En este entorno simulamos la respuesta de la pasarela. Cuando staging público esté disponible, este mismo contrato se podrá conectar a PSE real sin cambiar la experiencia del usuario.
                 </p>
               </div>
             </div>
@@ -254,22 +269,25 @@ export function PatientPayments() {
 
 function HeroMiniCard({ title, value, icon: Icon }: any) {
   return (
-    <div className="rounded-[24px] border border-white/18 bg-white/16 p-4 backdrop-blur">
-      <div className="w-fit rounded-2xl bg-white/16 p-3 text-white">
+    <div className="flex flex-col items-center rounded-[24px] border border-white/20 bg-white/15 p-4 text-center backdrop-blur">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 text-white">
         <Icon className="h-5 w-5" />
       </div>
-      <p className="mt-3 text-sm text-blue-50">{title}</p>
-      <p className="mt-1 text-2xl font-black tracking-[-0.04em] text-white">{value}</p>
+      <p className="mt-2.5 text-xl font-black tracking-[-0.04em] text-white">{value}</p>
+      <p className="mt-0.5 text-xs text-fuchsia-50">{title}</p>
     </div>
   );
 }
 
-function MetricCard({ title, value, subtitle }: any) {
+function MetricCard({ title, value, subtitle, icon: Icon, tone = 'emerald' }: any) {
   return (
-    <div className="rounded-[24px] border border-slate-200 bg-white p-5">
-      <p className="text-sm text-slate-500">{title}</p>
-      <p className="mt-2 text-3xl font-black tracking-[-0.04em] text-slate-950">{value}</p>
-      <p className="mt-2 text-sm text-slate-500">{subtitle}</p>
+    <div className="flex flex-col items-center rounded-[24px] border border-slate-200 bg-white p-5 text-center">
+      <div className={`flex h-11 w-11 items-center justify-center rounded-2xl bg-gradient-to-br ${metricTones[tone]} text-white shadow-md`}>
+        {Icon ? <Icon className="h-5 w-5" /> : null}
+      </div>
+      <p className="mt-3 text-3xl font-black tracking-[-0.04em] text-slate-950">{value}</p>
+      <p className="mt-1 text-sm font-semibold text-slate-700">{title}</p>
+      <p className="mt-0.5 text-xs text-slate-500">{subtitle}</p>
     </div>
   );
 }

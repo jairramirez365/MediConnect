@@ -42,7 +42,7 @@ export function StatusBadge({ status }: { status?: string }) {
   const tone = toneByStatus[status || ''] || 'bg-gray-100 text-gray-700';
 
   return (
-    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium capitalize ${tone}`}>
+    <span className={`inline-flex rounded-full px-3 py-1 text-[11px] font-semibold uppercase tracking-wide ${tone}`}>
       {label}
     </span>
   );

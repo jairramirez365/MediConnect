@@ -1,12 +1,16 @@
 import { Save, UserRound } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { api } from '../../services/api';
 import { useAuth } from '../../store/AuthContext';
 import { ColombiaLocationFields } from '../components/ColombiaLocationFields';
 import { Field } from './DoctorProfile';
 
+const EASE = [0.16, 1, 0.3, 1] as const;
+
 export function PatientProfile() {
   const { profile, refreshProfile } = useAuth();
+  const reduce = useReducedMotion();
   const [message, setMessage] = useState('');
   const [departmentCode, setDepartmentCode] = useState('');
   const [departmentName, setDepartmentName] = useState('');
@@ -46,29 +50,31 @@ export function PatientProfile() {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-[32px] border border-blue-100/80 bg-gradient-to-br from-white via-blue-50 to-indigo-100 p-8 shadow-[0_24px_80px_rgba(37,99,235,0.12)]">
-        <div className="absolute -right-20 top-0 h-56 w-56 rounded-full bg-blue-200/40 blur-3xl" />
-        <div className="absolute -left-12 bottom-0 h-40 w-40 rounded-full bg-cyan-200/40 blur-3xl" />
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/85 px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm backdrop-blur">
-              <UserRound className="h-4 w-4" />
-              Perfil del paciente
-            </span>
-            <h2 className="mt-5 text-3xl font-black tracking-tight text-slate-900 md:text-5xl">
-              Mantén tu informacion personal y de soporte siempre actualizada.
-            </h2>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
-              Esta vista concentra tus datos esenciales, contactos de emergencia y autorizaciones para que la atencion fluya sin fricciones.
-            </p>
-          </div>
-
-          <div className="rounded-[28px] border border-white/70 bg-white/80 px-5 py-5 shadow-[0_16px_40px_rgba(37,99,235,0.1)] backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Cuenta activa</p>
-            <p className="mt-3 text-lg font-bold text-slate-900">{profile?.email || 'Paciente MediConnect'}</p>
+      <motion.section
+        initial={reduce ? false : { opacity: 0, y: 22, scale: 0.99 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: EASE }}
+        className="relative overflow-hidden rounded-[32px] border border-white/80 bg-[linear-gradient(135deg,_#be123c_0%,_#db2777_45%,_#9333ea_100%)] p-7 text-center text-white shadow-[0_30px_90px_rgba(219,39,119,0.30)] md:p-9"
+      >
+        <div aria-hidden className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/15 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-16 -left-10 h-52 w-52 rounded-full bg-violet-300/25 blur-3xl" />
+        <div className="relative flex flex-col items-center">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
+            <UserRound className="h-4 w-4" />
+            Perfil del paciente
+          </span>
+          <h2 className="mt-4 max-w-2xl text-balance text-2xl font-black tracking-[-0.03em] md:text-4xl">
+            Mantén tu información personal y de soporte siempre actualizada.
+          </h2>
+          <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-rose-50 md:text-base">
+            Esta vista concentra tus datos esenciales, contactos de emergencia y autorizaciones para que la atención fluya sin fricciones.
+          </p>
+          <div className="mt-6 w-full max-w-sm rounded-2xl border border-white/20 bg-white/15 px-5 py-4 text-center backdrop-blur">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-rose-50/90">Cuenta activa</p>
+            <p className="mt-1 break-words text-sm font-bold leading-6 text-white sm:text-base">{profile?.email || 'Paciente MediConnect'}</p>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {message && (
         <div className="rounded-3xl border border-blue-100 bg-blue-50/80 px-5 py-4 text-sm font-medium text-blue-700">
@@ -81,7 +87,7 @@ export function PatientProfile() {
           <Field name="firstName" label="Nombres" defaultValue={profile?.nombres || ''} />
           <Field name="lastName" label="Apellidos" defaultValue={profile?.apellidos || ''} />
           <Field name="birthDate" label="Fecha de nacimiento" type="date" defaultValue={profile?.fecha_nacimiento?.slice?.(0, 10) || ''} />
-          <Field name="gender" label="Genero" defaultValue={profile?.sexo || ''} />
+          <Field name="gender" label="Género" defaultValue={profile?.sexo || ''} />
           <Field name="bloodType" label="Tipo de sangre" defaultValue={profile?.tipo_sangre || ''} />
           <ColombiaLocationFields
             departmentCode={departmentCode}
@@ -97,9 +103,9 @@ export function PatientProfile() {
             }}
             onMunicipalityChange={setMunicipality}
           />
-          <Field name="address" label="Direccion" defaultValue={profile?.direccion || ''} />
+          <Field name="address" label="Dirección" defaultValue={profile?.direccion || ''} />
           <Field name="emergencyContactName" label="Contacto de emergencia" defaultValue={profile?.nombre_contacto_emergencia || ''} />
-          <Field name="emergencyContactPhone" label="Telefono de emergencia" defaultValue={profile?.telefono_contacto_emergencia || ''} />
+          <Field name="emergencyContactPhone" label="Teléfono de emergencia" defaultValue={profile?.telefono_contacto_emergencia || ''} />
           <label className="flex items-start gap-3 rounded-[24px] border border-slate-200 bg-slate-50/60 p-4 md:col-span-2">
             <input
               name="authorizesCommissionAgentChat"
@@ -108,15 +114,17 @@ export function PatientProfile() {
               className="mt-1 h-4 w-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
             />
             <span className="text-sm leading-6 text-slate-600">
-              Autorizo la participacion del gestor o agente de servicio dentro del chat cuando necesite acompanamiento adicional.
+              Autorizo la participación del gestor o agente de servicio dentro del chat cuando necesite acompañamiento adicional.
             </span>
           </label>
         </div>
 
-        <button className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-[0_12px_30px_rgba(37,99,235,0.24)] transition hover:bg-blue-700">
-          <Save className="h-4 w-4" />
-          Guardar cambios
-        </button>
+        <div className="mt-6 flex justify-center">
+          <button className="inline-flex min-h-[48px] items-center gap-2 rounded-2xl bg-gradient-to-r from-rose-600 via-fuchsia-600 to-violet-600 px-7 py-3 font-semibold text-white shadow-lg shadow-fuchsia-600/25 transition hover:from-rose-700 hover:via-fuchsia-700 hover:to-violet-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500 focus-visible:ring-offset-2">
+            <Save className="h-4 w-4" />
+            Guardar cambios
+          </button>
+        </div>
       </form>
     </div>
   );

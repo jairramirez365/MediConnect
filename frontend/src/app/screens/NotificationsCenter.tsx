@@ -1,11 +1,16 @@
 import { useEffect, useMemo, useState } from 'react';
-import { Bell, CheckCheck, Loader2, RefreshCw, Send } from 'lucide-react';
+import { Bell, CheckCheck, Loader2, Send } from 'lucide-react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { api } from '../../services/api';
 import { useAuth } from '../../store/AuthContext';
 
+const EASE = [0.16, 1, 0.3, 1] as const;
+
+const formatTag = (value?: string) => String(value || '').replaceAll('_', ' ');
+
 const eventOptions = [
   { value: '', label: 'Todos los eventos' },
-  { value: 'verificacion_cuenta', label: 'Verificacion de cuenta' },
+  { value: 'verificacion_cuenta', label: 'Verificación de cuenta' },
   { value: 'cita_agendada', label: 'Cita agendada' },
   { value: 'cita_modificada', label: 'Cita modificada' },
   { value: 'cita_cancelada', label: 'Cita cancelada' },
@@ -25,6 +30,7 @@ export function NotificationsCenter() {
   const [message, setMessage] = useState('');
 
   const isAdmin = role === 'admin';
+  const reduce = useReducedMotion();
 
   async function loadNotifications() {
     setLoading(true);
@@ -86,31 +92,41 @@ export function NotificationsCenter() {
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[30px] border border-white/80 bg-white/92 p-6 shadow-[0_24px_80px_rgba(37,99,235,0.08)]">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-          <div>
-            <span className="inline-flex rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.18em] text-blue-700">
-              Centro de notificaciones
-            </span>
-            <h1 className="mt-3 text-3xl font-bold text-slate-900">{isAdmin ? 'Auditoria y entregas multicanal' : 'Mensajes, alertas y recordatorios'}</h1>
-            <p className="mt-2 max-w-3xl text-sm leading-6 text-slate-600">
-              {isAdmin
-                ? 'Supervisa el historial de envios, filtra incidencias, revisa estados de entrega y reprocesa notificaciones fallidas sin salir de MediConnect.'
-                : 'Consulta confirmaciones, cambios de agenda y recordatorios de tus citas desde un solo panel con trazabilidad por canal.'}
-            </p>
-          </div>
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            <MetricCard label="No leidas" value={String(unreadCount)} />
+      <motion.section
+        initial={reduce ? false : { opacity: 0, y: 22, scale: 0.99 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: EASE }}
+        className="relative overflow-hidden rounded-[30px] border border-white/80 bg-[linear-gradient(135deg,_#4338ca_0%,_#7c3aed_45%,_#c026d3_100%)] p-7 text-center text-white shadow-[0_30px_90px_rgba(124,58,237,0.28)] md:p-9"
+      >
+        <div aria-hidden className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/15 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-16 -left-10 h-52 w-52 rounded-full bg-fuchsia-300/25 blur-3xl" />
+        <div className="relative flex flex-col items-center">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
+            <Bell className="h-4 w-4" />
+            Centro de notificaciones
+          </span>
+          <h1 className="mt-4 max-w-2xl text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">
+            {isAdmin ? 'Auditoría y entregas multicanal' : 'Mensajes, alertas y recordatorios'}
+          </h1>
+          <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-indigo-50 md:text-base">
+            {isAdmin
+              ? 'Supervisa el historial de envíos, filtra incidencias, revisa estados de entrega y reprocesa notificaciones fallidas sin salir de MediConnect.'
+              : 'Consulta confirmaciones, cambios de agenda y recordatorios de tus citas desde un solo panel con trazabilidad por canal.'}
+          </p>
+          <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+            <MetricCard label="No leídas" value={String(unreadCount)} />
             <MetricCard label="Total visibles" value={String(notifications.length)} />
-            <button
+            <motion.button
               onClick={isAdmin ? handleRunJobs : loadNotifications}
-              className="rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
+              whileHover={reduce ? undefined : { scale: 1.03 }}
+              whileTap={reduce ? undefined : { scale: 0.97 }}
+              className="inline-flex min-h-[48px] items-center gap-2 rounded-2xl bg-white px-5 py-3 text-sm font-bold text-violet-700 shadow-lg shadow-violet-950/20 transition hover:bg-violet-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
             >
               {busyId === 'run-jobs' ? 'Ejecutando...' : isAdmin ? 'Ejecutar recordatorios' : 'Actualizar'}
-            </button>
+            </motion.button>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       <section className="grid gap-6 xl:grid-cols-[0.95fr_1.05fr]">
         <div className="rounded-[28px] border border-white/80 bg-white/92 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
@@ -122,8 +138,8 @@ export function NotificationsCenter() {
                 onChange={setReadState}
                 options={[
                   { value: '', label: 'Todas' },
-                  { value: 'unread', label: 'No leidas' },
-                  { value: 'read', label: 'Leidas' }
+                  { value: 'unread', label: 'No leídas' },
+                  { value: 'read', label: 'Leídas' }
                 ]}
               />
             )}
@@ -174,23 +190,28 @@ export function NotificationsCenter() {
                   }`}
                 >
                   <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="rounded-full bg-slate-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700">
-                          {notification.channel}
-                        </span>
-                        <span className="rounded-full bg-blue-100 px-2.5 py-1 text-[11px] font-semibold text-blue-700">
-                          {notification.eventType || notification.type}
-                        </span>
+                    <div className="flex min-w-0 items-start gap-3">
+                      <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-500 to-fuchsia-600 text-white shadow-md shadow-fuchsia-600/20">
+                        <Bell className="h-5 w-5" />
+                      </span>
+                      <div className="min-w-0">
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="rounded-full bg-sky-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-sky-700">
+                            {formatTag(notification.channel)}
+                          </span>
+                          <span className="rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-semibold uppercase tracking-wide text-violet-700">
+                            {formatTag(notification.eventType || notification.type)}
+                          </span>
+                        </div>
+                        <p className="mt-2 line-clamp-2 break-words text-sm leading-6 text-slate-700">{notification.message}</p>
+                        <p className="mt-2 text-xs text-slate-500">
+                          {notification.deliveredAt || notification.sentAt || notification.scheduledAt
+                            ? new Date(notification.deliveredAt || notification.sentAt || notification.scheduledAt).toLocaleString('es-CO')
+                            : 'Sin fecha'}
+                        </p>
                       </div>
-                      <p className="mt-3 line-clamp-2 text-sm leading-6 text-slate-700">{notification.message}</p>
-                      <p className="mt-3 text-xs text-slate-500">
-                        {notification.deliveredAt || notification.sentAt || notification.scheduledAt
-                          ? new Date(notification.deliveredAt || notification.sentAt || notification.scheduledAt).toLocaleString('es-CO')
-                          : 'Sin fecha'}
-                      </p>
                     </div>
-                    {!notification.readAt && !isAdmin && <span className="mt-1 h-2.5 w-2.5 rounded-full bg-blue-500" />}
+                    {!notification.readAt && !isAdmin && <span className="mt-1 h-2.5 w-2.5 shrink-0 rounded-full bg-fuchsia-500" />}
                   </div>
                 </button>
               ))
@@ -204,11 +225,11 @@ export function NotificationsCenter() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <div className="flex flex-wrap items-center gap-2">
-                    <span className="rounded-full bg-blue-100 px-3 py-1 text-xs font-semibold text-blue-700">{selected.eventType || selected.type}</span>
-                    <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold text-slate-700">{selected.channel}</span>
-                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-xs font-semibold text-emerald-700">{selected.status}</span>
+                    <span className="rounded-full bg-blue-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700">{formatTag(selected.eventType || selected.type)}</span>
+                    <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700">{formatTag(selected.channel)}</span>
+                    <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">{formatTag(selected.status)}</span>
                   </div>
-                  <h2 className="mt-4 text-2xl font-bold text-slate-900">Detalle de notificacion</h2>
+                  <h2 className="mt-4 text-2xl font-bold text-slate-900">Detalle de notificación</h2>
                 </div>
 
                 <div className="flex gap-2">
@@ -218,7 +239,7 @@ export function NotificationsCenter() {
                       className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2.5 text-sm font-medium text-slate-700 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700"
                     >
                       {busyId === selected.id ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCheck className="h-4 w-4" />}
-                      Marcar leida
+                      Marcar leída
                     </button>
                   )}
                   {isAdmin && selected.status === 'fallida' && (
@@ -236,7 +257,7 @@ export function NotificationsCenter() {
               <div className="mt-6 grid gap-4 md:grid-cols-2">
                 <InfoRow label="Destinatario" value={selected.destination || selected.email || 'Interno'} />
                 <InfoRow label="Fecha programada" value={formatDate(selected.scheduledAt)} />
-                <InfoRow label="Ultimo envio" value={formatDate(selected.sentAt)} />
+                <InfoRow label="Último envío" value={formatDate(selected.sentAt)} />
                 <InfoRow label="Entregada" value={formatDate(selected.deliveredAt)} />
                 {isAdmin && <InfoRow label="Intentos" value={String(selected.attemptsCount || 0)} />}
                 {isAdmin && <InfoRow label="Proveedor" value={selected.provider || 'mock'} />}
@@ -275,9 +296,9 @@ export function NotificationsCenter() {
 
 function MetricCard({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-2xl border border-slate-200 bg-white px-4 py-3">
-      <p className="text-xs font-medium uppercase tracking-[0.18em] text-slate-500">{label}</p>
-      <p className="mt-2 text-xl font-bold text-slate-900">{value}</p>
+    <div className="flex min-w-[108px] flex-col items-center rounded-2xl border border-white/20 bg-white/15 px-4 py-3 text-center backdrop-blur">
+      <p className="text-2xl font-black tracking-[-0.04em] text-white">{value}</p>
+      <p className="mt-0.5 text-xs font-medium text-indigo-50">{label}</p>
     </div>
   );
 }
@@ -324,11 +345,11 @@ function EmptyState({ detail = false }: { detail?: boolean }) {
   return (
     <div className="rounded-3xl border border-dashed border-slate-200 bg-slate-50 px-6 py-12 text-center">
       <Bell className="mx-auto h-12 w-12 text-slate-400" />
-      <h3 className="mt-4 text-lg font-semibold text-slate-900">{detail ? 'Selecciona una notificacion' : 'Aun no hay notificaciones'}</h3>
+      <h3 className="mt-4 text-lg font-semibold text-slate-900">{detail ? 'Selecciona una notificación' : 'Aún no hay notificaciones'}</h3>
       <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-slate-500">
         {detail
-          ? 'Cuando elijas un elemento del listado, aqui veras su trazabilidad, canal, contenido y estado de entrega.'
-          : 'Cuando se generen verificaciones, pagos, cambios de agenda o recordatorios, apareceran aqui con su detalle.'}
+          ? 'Cuando elijas un elemento del listado, aquí verás su trazabilidad, canal, contenido y estado de entrega.'
+          : 'Cuando se generen verificaciones, pagos, cambios de agenda o recordatorios, aparecerán aquí con su detalle.'}
       </p>
     </div>
   );

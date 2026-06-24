@@ -99,7 +99,7 @@ export function ColombiaLocationFields({
               name: nextDepartment?.name || ''
             });
           }}
-          className="w-full rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100"
+          className="w-full rounded-2xl border border-gray-200 bg-gray-50/70 px-4 py-3.5 text-gray-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
           required={required}
         >
           <option value="">Selecciona un departamento</option>
@@ -116,7 +116,7 @@ export function ColombiaLocationFields({
         <select
           value={municipality}
           onChange={(event) => onMunicipalityChange(event.target.value)}
-          className="w-full rounded-2xl border border-slate-200 bg-slate-50/60 px-4 py-3 text-slate-700 outline-none transition focus:border-blue-400 focus:ring-2 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-70"
+          className="w-full rounded-2xl border border-gray-200 bg-gray-50/70 px-4 py-3.5 text-gray-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100 disabled:cursor-not-allowed disabled:opacity-70"
           disabled={!departmentCode}
           required={required}
         >
