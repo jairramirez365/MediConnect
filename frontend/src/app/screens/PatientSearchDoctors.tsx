@@ -1,7 +1,10 @@
-import { CalendarDays, DollarSign, Search, ShieldCheck, Star, Stethoscope, MapPin, BriefcaseMedical } from 'lucide-react';
+import { CalendarDays, DollarSign, Search, ShieldCheck, Star, MapPin, BriefcaseMedical } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { api } from '../../services/api';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncState';
+
+const EASE = [0.16, 1, 0.3, 1] as const;
 
 type Doctor = {
   id: string;
@@ -43,6 +46,7 @@ export function PatientSearchDoctors({ onViewDoctor, onBookAppointment }: Patien
   const [catalogDoctors, setCatalogDoctors] = useState<Doctor[]>([]);
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [form, setForm] = useState<SearchForm>(initialForm);
+  const reduce = useReducedMotion();
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(true);
   const [isFiltering, setIsFiltering] = useState(false);
@@ -145,25 +149,30 @@ export function PatientSearchDoctors({ onViewDoctor, onBookAppointment }: Patien
     [catalogDoctors]
   );
 
-  if (isLoading) return <LoadingState label="Buscando medicos activos..." />;
+  if (isLoading) return <LoadingState label="Buscando médicos activos..." />;
   if (error && !doctors.length) return <ErrorState message={error} />;
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[32px] border border-white/80 bg-[linear-gradient(135deg,_#0f4fcf_0%,_#60a5fa_60%,_#dbeafe_100%)] p-6 text-white shadow-[0_28px_80px_rgba(37,99,235,0.18)] md:p-8">
-        <div className="grid gap-6 lg:grid-cols-[1fr_0.95fr] lg:items-end">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/16 px-4 py-2 text-sm font-semibold text-white/95">
-              <ShieldCheck className="h-4 w-4" />
-              Busqueda medica guiada
-            </div>
-            <h1 className="mt-5 text-4xl font-black tracking-[-0.05em] md:text-5xl">Encuentra al especialista ideal para tu siguiente consulta</h1>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-blue-50 md:text-lg">
-              Filtra por especialidad, ciudad, calificacion y experiencia. Cada opcion viene de informacion real disponible en la plataforma.
-            </p>
+      <motion.section
+        initial={reduce ? false : { opacity: 0, y: 22, scale: 0.99 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: EASE }}
+        className="relative overflow-hidden rounded-[32px] border border-white/80 bg-[linear-gradient(135deg,_#1e40af_0%,_#0284c7_45%,_#0891b2_100%)] p-7 text-center text-white shadow-[0_30px_90px_rgba(2,132,199,0.28)] md:p-9"
+      >
+        <div aria-hidden className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/15 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-16 -left-10 h-52 w-52 rounded-full bg-cyan-300/25 blur-3xl" />
+        <div className="relative flex flex-col items-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
+            <ShieldCheck className="h-4 w-4" />
+            Búsqueda médica guiada
           </div>
+          <h1 className="mt-4 max-w-2xl text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Encuentra al especialista ideal para tu siguiente consulta</h1>
+          <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-cyan-50 md:text-base">
+            Filtra por especialidad, ciudad, calificación y experiencia. Cada opción viene de información real disponible en la plataforma.
+          </p>
 
-          <div className="rounded-[28px] border border-white/18 bg-white/16 p-5 backdrop-blur">
+          <div className="mt-6 w-full max-w-3xl rounded-[28px] border border-white/20 bg-white/15 p-5 text-left backdrop-blur">
             <div className="grid gap-4 md:grid-cols-2">
               <FilterSelect
                 label="Especialidad"
@@ -178,14 +187,14 @@ export function PatientSearchDoctors({ onViewDoctor, onBookAppointment }: Patien
                 options={cities}
               />
               <FilterSelect
-                label="Calificacion minima"
+                label="Calificación mínima"
                 value={form.minRating}
                 onChange={(value) => setForm((current) => ({ ...current, minRating: value }))}
                 options={ratings.map((rating) => `${rating}+`)}
                 optionValues={ratings}
               />
               <FilterSelect
-                label="Experiencia minima"
+                label="Experiencia mínima"
                 value={form.minYearsExperience}
                 onChange={(value) => setForm((current) => ({ ...current, minYearsExperience: value }))}
                 options={yearsExperience.map((years) => `${years} años`)}
@@ -206,11 +215,11 @@ export function PatientSearchDoctors({ onViewDoctor, onBookAppointment }: Patien
               />
             </div>
 
-            <div className="mt-4 flex flex-wrap gap-3">
+            <div className="mt-4 flex flex-wrap justify-center gap-3">
               <button
                 onClick={applyFilters}
                 disabled={isFiltering}
-                className="inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 font-semibold text-blue-700 transition hover:bg-blue-50 disabled:opacity-60"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl bg-white px-5 py-3 font-semibold text-blue-700 shadow-lg shadow-blue-950/20 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 disabled:opacity-60"
               >
                 <Search className="h-4 w-4" />
                 Buscar filtros
@@ -220,14 +229,14 @@ export function PatientSearchDoctors({ onViewDoctor, onBookAppointment }: Patien
                   setForm(initialForm);
                   setDoctors(catalogDoctors);
                 }}
-                className="rounded-2xl border border-white/30 bg-white/10 px-5 py-3 font-semibold text-white transition hover:bg-white/18"
+                className="min-h-[44px] rounded-2xl border border-white/30 bg-white/10 px-5 py-3 font-semibold text-white transition hover:bg-white/18 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
               >
                 Limpiar
               </button>
             </div>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {error && (
         <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -236,7 +245,7 @@ export function PatientSearchDoctors({ onViewDoctor, onBookAppointment }: Patien
       )}
 
       {doctors.length === 0 ? (
-        <EmptyState title="No hay medicos activos" description="Ajusta tus filtros o limpia la busqueda para volver a explorar especialistas." />
+        <EmptyState title="No hay médicos activos" description="Ajusta tus filtros o limpia la búsqueda para volver a explorar especialistas." />
       ) : (
         <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
           {doctors.map((doctor) => (
@@ -258,7 +267,7 @@ export function PatientSearchDoctors({ onViewDoctor, onBookAppointment }: Patien
               </div>
 
               <p className="mt-5 text-sm leading-7 text-slate-600">
-                {doctor.professionalBio || 'Perfil profesional disponible para ayudarte a tomar una decision informada.'}
+                {doctor.professionalBio || 'Perfil profesional disponible para ayudarte a tomar una decisión informada.'}
               </p>
 
               <div className="my-5 space-y-3 text-sm">
@@ -289,7 +298,7 @@ export function PatientSearchDoctors({ onViewDoctor, onBookAppointment }: Patien
                 </button>
                 <button
                   onClick={() => onBookAppointment(doctor.id)}
-                  className="rounded-2xl bg-blue-600 px-4 py-3 text-sm font-semibold text-white transition hover:bg-blue-700"
+                  className="inline-flex min-h-[44px] items-center justify-center rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-4 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-600/25 transition hover:from-blue-700 hover:to-cyan-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2"
                 >
                   Agendar cita
                 </button>

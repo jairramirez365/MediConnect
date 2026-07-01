@@ -1,8 +1,21 @@
 import { Calendar, ChevronRight, Clock3, FileText, Search, ShieldCheck, XCircle } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import { api } from '../../services/api';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncState';
 import { StatusBadge } from '../components/StatusBadge';
+
+const EASE = [0.16, 1, 0.3, 1] as const;
+
+const listStagger: Variants = {
+  hidden: {},
+  show: { transition: { staggerChildren: 0.07, delayChildren: 0.05 } }
+};
+
+const listItem: Variants = {
+  hidden: { opacity: 0, y: 16 },
+  show: { opacity: 1, y: 0, transition: { duration: 0.45, ease: EASE } }
+};
 
 export function PatientAppointments({
   onBookAppointment,
@@ -13,6 +26,7 @@ export function PatientAppointments({
   onOpenHistory?: (appointmentId?: string | null) => void;
   onOpenVideoConsultation?: (appointmentId: string) => void;
 }) {
+  const reduce = useReducedMotion();
   const [appointments, setAppointments] = useState<any[]>([]);
   const [filters, setFilters] = useState({
     date: '',
@@ -74,38 +88,47 @@ export function PatientAppointments({
     [appointments]
   );
 
-  if (isLoading) return <LoadingState label="Cargando gestion de citas..." />;
+  if (isLoading) return <LoadingState label="Cargando gestión de citas..." />;
   if (error && !appointments.length) return <ErrorState message={error} />;
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[30px] border border-white/80 bg-[linear-gradient(135deg,_#0f4fcf_0%,_#60a5fa_60%,_#dbeafe_100%)] p-6 text-white shadow-[0_28px_80px_rgba(37,99,235,0.18)] md:p-8">
-        <div className="grid gap-6 lg:grid-cols-[1fr_0.8fr] lg:items-end">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/16 px-4 py-2 text-sm font-semibold text-white/95">
-              <ShieldCheck className="h-4 w-4" />
-              Seguimiento claro de tu agenda
-            </div>
-            <h2 className="mt-5 text-4xl font-black tracking-[-0.05em] md:text-5xl">Gestion de citas</h2>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-blue-50 md:text-lg">
-              Filtra tus citas y abre el historial clinico desde cada consulta para mantener toda la informacion unida al recorrido real.
-            </p>
+      <motion.section
+        initial={reduce ? false : { opacity: 0, y: 22, scale: 0.99 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: EASE }}
+        className="relative overflow-hidden rounded-[30px] border border-white/80 bg-[linear-gradient(135deg,_#4338ca_0%,_#7c3aed_45%,_#c026d3_100%)] p-7 text-center text-white shadow-[0_30px_90px_rgba(124,58,237,0.28)] md:p-9"
+      >
+        <div aria-hidden className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/15 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-16 -left-10 h-52 w-52 rounded-full bg-cyan-300/25 blur-3xl" />
+        <div className="relative flex flex-col items-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
+            <ShieldCheck className="h-4 w-4" />
+            Seguimiento claro de tu agenda
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <h2 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Gestión de citas</h2>
+          <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-blue-50 md:text-base">
+            Filtra tus citas y abre el historial clínico desde cada consulta para mantener toda la información unida al recorrido real.
+          </p>
+
+          <div className="mt-6 grid w-full max-w-md grid-cols-2 gap-3">
             <MiniSummary title="Total citas" value={appointments.length} icon={Calendar} />
             <MiniSummary title="Pendientes" value={appointments.filter((appointment: any) => ['pendiente_confirmacion', 'confirmada'].includes(appointment.status)).length} icon={Clock3} />
           </div>
+
+          {onBookAppointment && (
+            <motion.button
+              onClick={onBookAppointment}
+              whileHover={reduce ? undefined : { scale: 1.03 }}
+              whileTap={reduce ? undefined : { scale: 0.97 }}
+              className="mt-6 inline-flex min-h-[48px] items-center gap-2 rounded-2xl bg-white px-6 py-3 font-bold text-blue-700 shadow-lg shadow-blue-950/20 transition hover:bg-blue-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+            >
+              Agendar nueva cita
+              <ChevronRight className="h-4 w-4" />
+            </motion.button>
+          )}
         </div>
-        {onBookAppointment && (
-          <button
-            onClick={onBookAppointment}
-            className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-white px-5 py-3 font-semibold text-blue-700 transition hover:bg-blue-50"
-          >
-            Agendar nueva cita
-            <ChevronRight className="h-4 w-4" />
-          </button>
-        )}
-      </section>
+      </motion.section>
 
       {error && (
         <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">
@@ -116,7 +139,7 @@ export function PatientAppointments({
       <section className="rounded-[28px] border border-white/80 bg-white/92 p-6 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
           <FilterInput label="Fecha" type="date" value={filters.date} onChange={(value) => setFilters((current) => ({ ...current, date: value }))} />
-          <FilterInput label="Medico" value={filters.doctor} onChange={(value) => setFilters((current) => ({ ...current, doctor: value }))} />
+          <FilterInput label="Médico" value={filters.doctor} onChange={(value) => setFilters((current) => ({ ...current, doctor: value }))} />
           <FilterInput label="Motivo" value={filters.reason} onChange={(value) => setFilters((current) => ({ ...current, reason: value }))} />
           <label className="block">
             <span className="mb-2 block text-sm font-medium text-slate-700">Estado</span>
@@ -137,93 +160,97 @@ export function PatientAppointments({
       {filteredAppointments.length === 0 ? (
         <EmptyState title="Sin citas para esos filtros" description="Ajusta los criterios o crea una nueva cita para seguir construyendo tu historial." />
       ) : (
-        <div className="overflow-hidden rounded-[28px] border border-white/80 bg-white/92 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[920px]">
-              <thead className="border-b border-gray-200 bg-gray-50">
-                <tr>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Fecha</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Medico</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Motivo</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Estado</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium uppercase text-gray-500">Acciones</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-gray-200">
-                {filteredAppointments.map((appointment: any) => (
-                  <tr key={appointment.id} className="hover:bg-gray-50">
-                    <td className="px-6 py-4 text-sm text-gray-900">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-4 w-4 text-blue-600" />
-                        {new Date(appointment.scheduledStartAt).toLocaleString('es-CO')}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4 text-sm text-gray-900">{appointment.doctor}</td>
-                    <td className="px-6 py-4 text-sm text-gray-600">{appointment.reason}</td>
-                    <td className="px-6 py-4">
-                      <div className="space-y-2">
-                        <StatusBadge status={appointment.status} />
-                        {appointment.requiresCommissionAgentInChat && (
-                          <div className="space-y-1">
-                            <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-slate-500">
-                              Acompanamiento en chat
-                            </p>
-                            <StatusBadge status={appointment.commissionAgentChatRequestStatus || 'pendiente_paciente'} />
-                            {appointment.commissionAgentChatRequestStatus === 'pendiente_paciente' && appointment.commissionAgentChatRequestAt && (
-                              <p className="max-w-[220px] text-xs leading-5 text-slate-500">
-                                Recibiras esta solicitud como recordatorio 5 minutos antes de la consulta y puedes resolverla desde aqui.
-                              </p>
-                            )}
-                          </div>
-                        )}
-                      </div>
-                    </td>
-                    <td className="px-6 py-4">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <button
-                          onClick={() => onOpenHistory?.(appointment.id)}
-                          className="inline-flex items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:text-blue-700"
-                        >
-                          <FileText className="h-4 w-4" />
-                          Historial
-                        </button>
-                        {appointment.careChannel === 'virtual' && ['confirmada', 'en_curso'].includes(appointment.status) && (
-                          <button
-                            onClick={() => onOpenVideoConsultation?.(appointment.id)}
-                            className="inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-blue-700"
-                          >
-                            Videoconsulta
-                          </button>
-                        )}
-                        {appointment.requiresCommissionAgentInChat && appointment.commissionAgentChatRequestStatus === 'pendiente_paciente' && (
-                          <button
-                            onClick={() => respondCommissionAgentChatRequest(appointment.id, 'accept')}
-                            className="inline-flex items-center gap-2 rounded-2xl bg-emerald-600 px-3 py-2 text-sm font-semibold text-white transition hover:bg-emerald-700"
-                          >
-                            Aceptar chat
-                          </button>
-                        )}
-                        {appointment.requiresCommissionAgentInChat && appointment.commissionAgentChatRequestStatus === 'pendiente_paciente' && (
-                          <button
-                            onClick={() => respondCommissionAgentChatRequest(appointment.id, 'reject')}
-                            className="inline-flex items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-3 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100"
-                          >
-                            Rechazar chat
-                          </button>
-                        )}
-                        {['pendiente_confirmacion', 'confirmada'].includes(appointment.status) && (
-                          <button onClick={() => cancelAppointment(appointment.id)} className="rounded-lg p-2 text-red-700 hover:bg-red-50">
-                            <XCircle className="h-4 w-4" />
-                          </button>
-                        )}
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
+        <motion.div
+          variants={listStagger}
+          initial={reduce ? false : 'hidden'}
+          animate="show"
+          className="grid gap-4 xl:grid-cols-2"
+        >
+          {filteredAppointments.map((appointment: any) => (
+            <motion.article
+              key={appointment.id}
+              variants={listItem}
+              whileHover={reduce ? undefined : { y: -3 }}
+              className="flex flex-col rounded-[24px] border border-slate-200 bg-white p-5 shadow-[0_12px_36px_rgba(37,99,235,0.06)]"
+            >
+              <div className="flex items-center justify-between gap-3 border-b border-slate-100 pb-3">
+                <div className="flex min-w-0 items-center gap-2 text-sm font-semibold text-slate-900">
+                  <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 text-white">
+                    <Calendar className="h-4 w-4" />
+                  </span>
+                  <span className="break-words">{new Date(appointment.scheduledStartAt).toLocaleString('es-CO')}</span>
+                </div>
+                <div className="shrink-0">
+                  <StatusBadge status={appointment.status} />
+                </div>
+              </div>
+
+              <div className="mt-3 text-center">
+                <p className="text-lg font-bold text-slate-900">{appointment.doctor}</p>
+                <p className="mt-0.5 text-sm text-slate-600">{appointment.reason}</p>
+              </div>
+
+              {appointment.requiresCommissionAgentInChat && (
+                <div className="mt-3 rounded-2xl bg-blue-50/70 p-3 text-center">
+                  <p className="text-[11px] font-semibold uppercase tracking-[0.18em] text-blue-700/80">
+                    Acompañamiento en chat
+                  </p>
+                  <div className="mt-1.5 flex justify-center">
+                    <StatusBadge status={appointment.commissionAgentChatRequestStatus || 'pendiente_paciente'} />
+                  </div>
+                  {appointment.commissionAgentChatRequestStatus === 'pendiente_paciente' && appointment.commissionAgentChatRequestAt && (
+                    <p className="mt-2 text-xs leading-5 text-slate-500">
+                      Recibirás esta solicitud como recordatorio 5 minutos antes de la consulta y puedes resolverla desde aquí.
+                    </p>
+                  )}
+                </div>
+              )}
+
+              <div className="mt-4 flex flex-wrap items-center justify-center gap-2">
+                <button
+                  onClick={() => onOpenHistory?.(appointment.id)}
+                  className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl border border-slate-200 bg-white px-4 py-2 text-sm font-semibold text-slate-700 transition hover:border-blue-200 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                >
+                  <FileText className="h-4 w-4" />
+                  Historial
+                </button>
+                {appointment.careChannel === 'virtual' && ['confirmada', 'en_curso'].includes(appointment.status) && (
+                  <button
+                    onClick={() => onOpenVideoConsultation?.(appointment.id)}
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl bg-gradient-to-r from-blue-600 to-blue-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-blue-600/25 transition hover:from-blue-700 hover:to-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
+                  >
+                    Videoconsulta
+                  </button>
+                )}
+                {appointment.requiresCommissionAgentInChat && appointment.commissionAgentChatRequestStatus === 'pendiente_paciente' && (
+                  <button
+                    onClick={() => respondCommissionAgentChatRequest(appointment.id, 'accept')}
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl bg-gradient-to-r from-emerald-600 to-emerald-500 px-4 py-2 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:from-emerald-700 hover:to-emerald-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2"
+                  >
+                    Aceptar chat
+                  </button>
+                )}
+                {appointment.requiresCommissionAgentInChat && appointment.commissionAgentChatRequestStatus === 'pendiente_paciente' && (
+                  <button
+                    onClick={() => respondCommissionAgentChatRequest(appointment.id, 'reject')}
+                    className="inline-flex min-h-[44px] items-center gap-2 rounded-2xl border border-rose-200 bg-rose-50 px-4 py-2 text-sm font-semibold text-rose-700 transition hover:bg-rose-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-rose-400 focus-visible:ring-offset-2"
+                  >
+                    Rechazar chat
+                  </button>
+                )}
+                {['pendiente_confirmacion', 'confirmada'].includes(appointment.status) && (
+                  <button
+                    onClick={() => cancelAppointment(appointment.id)}
+                    aria-label="Cancelar cita"
+                    className="inline-flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-rose-200 text-rose-600 transition hover:bg-rose-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-400 focus-visible:ring-offset-2"
+                  >
+                    <XCircle className="h-5 w-5" />
+                  </button>
+                )}
+              </div>
+            </motion.article>
+          ))}
+        </motion.div>
       )}
     </div>
   );
@@ -231,12 +258,12 @@ export function PatientAppointments({
 
 function MiniSummary({ title, value, icon: Icon }: any) {
   return (
-    <div className="rounded-[24px] border border-white/18 bg-white/16 p-4 backdrop-blur">
-      <div className="w-fit rounded-2xl bg-white/16 p-3 text-white">
+    <div className="flex flex-col items-center rounded-[24px] border border-white/20 bg-white/15 p-4 text-center backdrop-blur">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 text-white">
         <Icon className="h-5 w-5" />
       </div>
-      <p className="mt-3 text-sm text-blue-50">{title}</p>
-      <p className="mt-1 text-3xl font-black tracking-[-0.04em] text-white">{value}</p>
+      <p className="mt-2.5 text-3xl font-black tracking-[-0.04em] text-white">{value}</p>
+      <p className="mt-0.5 text-sm text-blue-50">{title}</p>
     </div>
   );
 }

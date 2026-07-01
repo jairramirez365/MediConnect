@@ -1,12 +1,16 @@
 import { FileUp, Save, ShieldCheck, Stethoscope } from 'lucide-react';
 import { FormEvent, useEffect, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { api } from '../../services/api';
 import { useAuth } from '../../store/AuthContext';
 import { StatusBadge } from '../components/StatusBadge';
 import { ColombiaLocationFields } from '../components/ColombiaLocationFields';
 
+const EASE = [0.16, 1, 0.3, 1] as const;
+
 export function DoctorProfile() {
   const { profile, refreshProfile } = useAuth();
+  const reduce = useReducedMotion();
   const [message, setMessage] = useState('');
   const [departmentCode, setDepartmentCode] = useState('');
   const [departmentName, setDepartmentName] = useState('');
@@ -52,7 +56,7 @@ export function DoctorProfile() {
         fileUrl: String(form.get('fileUrl') || '')
       });
       await refreshProfile();
-      setMessage('Documento cargado. Tu perfil pasa a revision documental cuando aplica.');
+      setMessage('Documento cargado. Tu perfil pasa a revisión documental cuando aplica.');
       event.currentTarget.reset();
     } catch (err) {
       setMessage(err instanceof Error ? err.message : 'No fue posible cargar el documento.');
@@ -61,31 +65,31 @@ export function DoctorProfile() {
 
   return (
     <div className="space-y-8">
-      <section className="relative overflow-hidden rounded-[32px] border border-blue-100/80 bg-gradient-to-br from-white via-blue-50 to-indigo-100 p-8 shadow-[0_24px_80px_rgba(37,99,235,0.12)]">
-        <div className="absolute -right-20 top-0 h-56 w-56 rounded-full bg-blue-200/40 blur-3xl" />
-        <div className="absolute -left-12 bottom-0 h-40 w-40 rounded-full bg-cyan-200/40 blur-3xl" />
-        <div className="relative flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-          <div className="max-w-3xl">
-            <span className="inline-flex items-center gap-2 rounded-full border border-blue-200 bg-white/85 px-4 py-2 text-sm font-semibold text-blue-700 shadow-sm backdrop-blur">
-              <Stethoscope className="h-4 w-4" />
-              Perfil profesional
-            </span>
-            <h2 className="mt-5 text-3xl font-black tracking-tight text-slate-900 md:text-5xl">
-              Completa tu perfil y documentos para quedar listo dentro de MediConnect.
-            </h2>
-            <p className="mt-4 max-w-2xl text-base leading-7 text-slate-600 md:text-lg">
-              Esta vista concentra tus datos medicos y soporte documental para que el proceso de aprobacion sea claro.
-            </p>
-          </div>
-
-          <div className="rounded-[28px] border border-white/70 bg-white/80 px-5 py-5 shadow-[0_16px_40px_rgba(37,99,235,0.1)] backdrop-blur">
-            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-slate-500">Estado actual</p>
-            <div className="mt-4">
-              <StatusBadge status={profile?.estado_validacion || profile?.validationStatus} />
-            </div>
+      <motion.section
+        initial={reduce ? false : { opacity: 0, y: 22, scale: 0.99 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: EASE }}
+        className="relative overflow-hidden rounded-[32px] border border-white/80 bg-[linear-gradient(135deg,_#6d28d9_0%,_#9333ea_45%,_#c026d3_100%)] p-7 text-center text-white shadow-[0_30px_90px_rgba(147,51,234,0.30)] md:p-9"
+      >
+        <div aria-hidden className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/15 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-16 -left-10 h-52 w-52 rounded-full bg-fuchsia-300/25 blur-3xl" />
+        <div className="relative flex flex-col items-center">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
+            <Stethoscope className="h-4 w-4" />
+            Perfil profesional
+          </span>
+          <h2 className="mt-4 max-w-2xl text-balance text-2xl font-black tracking-[-0.03em] md:text-4xl">
+            Completa tu perfil y documentos para quedar listo dentro de MediConnect.
+          </h2>
+          <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-fuchsia-50 md:text-base">
+            Esta vista concentra tus datos médicos y soporte documental para que el proceso de aprobación sea claro.
+          </p>
+          <div className="mt-6 inline-flex flex-col items-center gap-2 rounded-2xl border border-white/20 bg-white/15 px-5 py-4 backdrop-blur">
+            <p className="text-xs font-semibold uppercase tracking-[0.18em] text-fuchsia-50/90">Estado actual</p>
+            <StatusBadge status={profile?.estado_validacion || profile?.validationStatus} />
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {message && (
         <div className="rounded-3xl border border-blue-100 bg-blue-50/80 px-5 py-4 text-sm font-medium text-blue-700">
@@ -100,7 +104,7 @@ export function DoctorProfile() {
           </div>
           <div>
             <h3 className="text-xl font-bold text-slate-900">Datos profesionales</h3>
-            <p className="text-sm text-slate-500">Informacion visible para operacion, aprobacion y agenda medica.</p>
+            <p className="text-sm text-slate-500">Información visible para operación, aprobación y agenda médica.</p>
           </div>
         </div>
 
@@ -129,12 +133,12 @@ export function DoctorProfile() {
           />
           <Field
             name="yearsOfExperience"
-            label="Anos de experiencia"
+            label="Años de experiencia"
             type="number"
             defaultValue={profile?.anos_experiencia || 0}
           />
           <label className="block md:col-span-2">
-            <span className="mb-2 block text-sm font-medium text-slate-700">Biografia profesional</span>
+            <span className="mb-2 block text-sm font-medium text-slate-700">Biografía profesional</span>
             <textarea
               name="professionalBio"
               defaultValue={profile?.biografia_profesional || ''}
@@ -143,16 +147,18 @@ export function DoctorProfile() {
           </label>
         </div>
 
-        <button className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-blue-600 px-5 py-3 font-semibold text-white shadow-[0_12px_30px_rgba(37,99,235,0.24)] transition hover:bg-blue-700">
-          <Save className="h-4 w-4" />
-          Guardar perfil
-        </button>
+        <div className="mt-6 flex justify-center">
+          <button className="inline-flex min-h-[48px] items-center gap-2 rounded-2xl bg-gradient-to-r from-violet-600 to-fuchsia-600 px-7 py-3 font-semibold text-white shadow-lg shadow-fuchsia-600/25 transition hover:from-violet-700 hover:to-fuchsia-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-fuchsia-500 focus-visible:ring-offset-2">
+            <Save className="h-4 w-4" />
+            Guardar perfil
+          </button>
+        </div>
       </form>
 
       <form onSubmit={uploadDocument} className="rounded-[28px] border border-slate-200/80 bg-white/95 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
         <h3 className="text-xl font-bold text-slate-900">Carga de documentos</h3>
         <p className="mt-1 text-sm text-slate-500">
-          Cuando cargues la documentacion requerida, el equipo administrador podra revisarla y aprobar tu activacion.
+          Cuando cargues la documentación requerida, el equipo administrador podrá revisarla y aprobar tu activación.
         </p>
 
         <div className="mt-6 grid gap-4 md:grid-cols-3">
@@ -161,10 +167,12 @@ export function DoctorProfile() {
           <Field name="fileUrl" label="URL archivo" placeholder="https://..." required />
         </div>
 
-        <button className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-slate-900 px-5 py-3 font-semibold text-white shadow-[0_14px_34px_rgba(15,23,42,0.18)] transition hover:bg-slate-800">
-          <FileUp className="h-4 w-4" />
-          Enviar a revision
-        </button>
+        <div className="mt-6 flex justify-center">
+          <button className="inline-flex min-h-[48px] items-center gap-2 rounded-2xl bg-gradient-to-r from-indigo-600 to-violet-700 px-7 py-3 font-semibold text-white shadow-lg shadow-violet-700/25 transition hover:from-indigo-700 hover:to-violet-800 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-violet-500 focus-visible:ring-offset-2">
+            <FileUp className="h-4 w-4" />
+            Enviar a revisión
+          </button>
+        </div>
       </form>
     </div>
   );

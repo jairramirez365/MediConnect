@@ -1,7 +1,10 @@
 import { AlertCircle, Calendar, ChevronRight, Clock3, ExternalLink, Landmark } from 'lucide-react';
 import { useEffect, useMemo, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { api } from '../../services/api';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncState';
+
+const EASE = [0.16, 1, 0.3, 1] as const;
 
 type Doctor = {
   id: string;
@@ -80,6 +83,7 @@ export function PatientBookAppointment({
   const [isScheduling, setIsScheduling] = useState(false);
   const [pendingSlot, setPendingSlot] = useState<any | null>(null);
   const [checkout, setCheckout] = useState<any | null>(null);
+  const reduce = useReducedMotion();
 
   useEffect(() => {
     async function loadDoctors() {
@@ -87,7 +91,7 @@ export function PatientBookAppointment({
         const response = await api.doctors({ limit: 100 });
         setDoctors(response.data || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'No fue posible cargar medicos activos.');
+        setError(err instanceof Error ? err.message : 'No fue posible cargar médicos activos.');
       } finally {
         setIsLoading(false);
       }
@@ -190,13 +194,13 @@ export function PatientBookAppointment({
           appointment,
           checkout: checkoutResponse.data
         });
-        setMessage('Tu slot quedo reservado temporalmente. Completa el pago PSE para confirmar la cita.');
+        setMessage('Tu slot quedó reservado temporalmente. Completa el pago PSE para confirmar la cita.');
         return;
       }
 
       setMessage(
         appointment.isFreeFollowUp
-          ? 'Cita de seguimiento confirmada sin cobro. Cumpliste la regla del mes calendario con el mismo medico.'
+          ? 'Cita de seguimiento confirmada sin cobro. Cumpliste la regla del mes calendario con el mismo médico.'
           : 'Cita creada correctamente.'
       );
       await refreshSlots();
@@ -229,7 +233,7 @@ export function PatientBookAppointment({
       const response = await api.simulatePaymentSuccess(checkout.checkout.payment.id, {
         providerReference: checkout.checkout.checkout?.reference
       });
-      setMessage(`Pago confirmado correctamente. La cita ya quedo ${response.data.payment.appointmentStatus || 'confirmada'}.`);
+      setMessage(`Pago confirmado correctamente. La cita ya quedó ${response.data.payment.appointmentStatus || 'confirmada'}.`);
       setCheckout(null);
       await refreshSlots();
     } catch (err) {
@@ -242,22 +246,27 @@ export function PatientBookAppointment({
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[32px] border border-white/80 bg-[linear-gradient(135deg,_#0f4fcf_0%,_#60a5fa_60%,_#dbeafe_100%)] p-6 text-white shadow-[0_28px_80px_rgba(37,99,235,0.18)] md:p-8">
-        <div className="grid gap-6 lg:grid-cols-[1fr_0.95fr] lg:items-end">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/16 px-4 py-2 text-sm font-semibold text-white/95">
-              <Calendar className="h-4 w-4" />
-              Agenda tu consulta
-            </div>
-            <h1 className="mt-5 text-4xl font-black tracking-[-0.05em] md:text-5xl">
-              Reserva tu cita con disponibilidad real y pago integrado
-            </h1>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-blue-50 md:text-lg">
-              Elige el especialista, define fecha y jornada, reserva tu slot y completa el pago PSE para confirmar la consulta.
-            </p>
+      <motion.section
+        initial={reduce ? false : { opacity: 0, y: 22, scale: 0.99 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: EASE }}
+        className="relative overflow-hidden rounded-[32px] border border-white/80 bg-[linear-gradient(135deg,_#4338ca_0%,_#2563eb_45%,_#06b6d4_100%)] p-7 text-center text-white shadow-[0_30px_90px_rgba(37,99,235,0.28)] md:p-9"
+      >
+        <div aria-hidden className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/15 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-16 -left-10 h-52 w-52 rounded-full bg-cyan-300/25 blur-3xl" />
+        <div className="relative flex flex-col items-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
+            <Calendar className="h-4 w-4" />
+            Agenda tu consulta
           </div>
+          <h1 className="mt-4 max-w-2xl text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">
+            Reserva tu cita con disponibilidad real y pago integrado
+          </h1>
+          <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-blue-50 md:text-base">
+            Elige el especialista, define fecha y jornada, reserva tu slot y completa el pago PSE para confirmar la consulta.
+          </p>
 
-          <div className="rounded-[28px] border border-white/18 bg-white/16 p-5 backdrop-blur">
+          <div className="mt-6 w-full max-w-xl rounded-[28px] border border-white/20 bg-white/15 p-5 text-left backdrop-blur">
             <label className="block">
               <span className="mb-2 block text-sm font-semibold text-white/90">Especialista</span>
               <select
@@ -274,7 +283,7 @@ export function PatientBookAppointment({
             </label>
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {selectedDoctor ? (
         <section className="grid gap-6 xl:grid-cols-[0.9fr_1.1fr]">
@@ -371,9 +380,9 @@ export function PatientBookAppointment({
                     key={date}
                     type="button"
                     onClick={() => setSelectedDate(date)}
-                    className={`rounded-2xl px-4 py-3 text-sm font-semibold transition ${
+                    className={`min-h-[44px] rounded-2xl px-4 py-3 text-sm font-semibold transition ${
                       selectedDate === date
-                        ? 'bg-slate-900 text-white'
+                        ? 'bg-gradient-to-r from-blue-600 to-cyan-600 text-white shadow-md shadow-cyan-600/25'
                         : 'border border-slate-200 bg-white text-slate-700 hover:border-blue-200 hover:text-blue-700'
                     }`}
                   >
@@ -398,15 +407,15 @@ export function PatientBookAppointment({
                     key={slot.startAt}
                     disabled={isScheduling}
                     onClick={() => setPendingSlot(slot)}
-                    className="rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,_#eff6ff,_#ffffff)] p-4 text-left text-blue-800 transition hover:border-blue-300 disabled:opacity-60"
+                    className="flex flex-col items-center rounded-[24px] border border-blue-100 bg-[linear-gradient(180deg,_#eff6ff,_#ffffff)] p-4 text-center text-blue-800 transition hover:-translate-y-0.5 hover:border-blue-300 hover:shadow-md hover:shadow-blue-600/10 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2 disabled:opacity-60"
                   >
-                    <p className="font-bold">
+                    <p className="text-lg font-black tracking-[-0.02em] text-blue-700">
                       {new Date(slot.startAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })}
                     </p>
-                    <p className="mt-1 text-xs text-slate-500">
+                    <p className="mt-1 text-xs font-semibold text-blue-600/80">
                       {journey === 'manana' ? 'Jornada mañana' : journey === 'tarde' ? 'Jornada tarde' : 'Horario disponible'}
                     </p>
-                    <p className="mt-2 text-xs text-slate-500">Si requiere pago, el slot quedara reservado por 30 minutos.</p>
+                    <p className="mt-2 text-xs leading-5 text-slate-500">Si requiere pago, el slot quedará reservado por 30 minutos.</p>
                   </button>
                 ))}
               </div>
@@ -414,7 +423,7 @@ export function PatientBookAppointment({
           </div>
         </section>
       ) : (
-        <EmptyState title="No hay medicos activos" description="Necesitamos al menos un especialista activo para habilitar el agendamiento." />
+        <EmptyState title="No hay médicos activos" description="Necesitamos al menos un especialista activo para habilitar el agendamiento." />
       )}
 
       {pendingSlot && selectedDoctor && (
@@ -422,11 +431,11 @@ export function PatientBookAppointment({
           <div className="w-full max-w-2xl rounded-[32px] border border-white/80 bg-white p-6 shadow-[0_30px_100px_rgba(15,23,42,0.2)]">
             <h3 className="text-2xl font-bold text-slate-950">Confirma tu cita antes de continuar</h3>
             <p className="mt-2 text-sm leading-6 text-slate-500">
-              Si esta consulta requiere pago, el sistema hara un preagendamiento y te llevara directo al flujo PSE.
+              Si esta consulta requiere pago, el sistema hará un preagendamiento y te llevará directo al flujo PSE.
             </p>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <SummaryItem label="Medico" value={`Dr(a). ${selectedDoctor.nombres} ${selectedDoctor.apellidos}`} />
+              <SummaryItem label="Médico" value={`Dr(a). ${selectedDoctor.nombres} ${selectedDoctor.apellidos}`} />
               <SummaryItem label="Especialidades" value={selectedDoctor.specialties?.join(', ') || 'Especialidad activa'} />
               <SummaryItem label="Fecha" value={new Date(pendingSlot.startAt).toLocaleDateString('es-CO')} />
               <SummaryItem label="Hora" value={new Date(pendingSlot.startAt).toLocaleTimeString('es-CO', { hour: '2-digit', minute: '2-digit' })} />
@@ -438,7 +447,7 @@ export function PatientBookAppointment({
 
             {appointmentType === 'seguimiento' && (
               <div className="mt-4 rounded-[22px] border border-amber-200 bg-amber-50 px-4 py-4 text-sm text-amber-800">
-                Si tuviste una cita completada con este mismo medico dentro del último mes calendario, el seguimiento se confirmara sin pago.
+                Si tuviste una cita completada con este mismo médico dentro del último mes calendario, el seguimiento se confirmará sin pago.
               </div>
             )}
 
@@ -452,7 +461,7 @@ export function PatientBookAppointment({
               <button
                 disabled={isScheduling}
                 onClick={confirmSchedule}
-                className="rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700 disabled:opacity-60"
+                className="min-h-[44px] rounded-2xl bg-gradient-to-r from-blue-600 to-cyan-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-cyan-600/25 transition hover:from-blue-700 hover:to-cyan-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-500 focus-visible:ring-offset-2 disabled:opacity-60"
               >
                 {isScheduling ? 'Reservando...' : 'Continuar'}
               </button>
@@ -482,7 +491,7 @@ export function PatientBookAppointment({
             </div>
 
             <div className="mt-6 grid gap-4 md:grid-cols-2">
-              <SummaryItem label="Estado de la cita" value={checkout.appointment.status} />
+              <SummaryItem label="Estado de la cita" value={String(checkout.appointment.status || '').replaceAll('_', ' ')} />
               <SummaryItem label="Referencia" value={checkout.checkout.checkout?.reference || 'Sin referencia'} />
               <SummaryItem label="Valor" value={`$${Number(checkout.checkout.payment?.amount || 0).toLocaleString('es-CO')}`} />
               <SummaryItem label="Expira" value={checkout.appointment.paymentExpiresAt ? new Date(checkout.appointment.paymentExpiresAt).toLocaleString('es-CO') : 'Sin vencimiento'} />

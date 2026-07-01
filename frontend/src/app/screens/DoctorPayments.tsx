@@ -1,10 +1,14 @@
 import { CreditCard, Receipt, Wallet } from 'lucide-react';
 import { useEffect, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import { api } from '../../services/api';
 import { EmptyState, ErrorState, LoadingState } from '../components/AsyncState';
 import { StatusBadge } from '../components/StatusBadge';
 
+const EASE = [0.16, 1, 0.3, 1] as const;
+
 export function DoctorPayments() {
+  const reduce = useReducedMotion();
   const [payments, setPayments] = useState<any[]>([]);
   const [summary, setSummary] = useState<any | null>(null);
   const [filters, setFilters] = useState({ status: '', search: '' });
@@ -34,31 +38,36 @@ export function DoctorPayments() {
     loadPayments();
   }, []);
 
-  if (isLoading) return <LoadingState label="Cargando pagos del medico..." />;
+  if (isLoading) return <LoadingState label="Cargando pagos del médico..." />;
   if (error && !summary) return <ErrorState message={error} />;
 
   return (
     <div className="space-y-6">
-      <section className="rounded-[32px] border border-white/80 bg-[linear-gradient(135deg,_#0f4fcf_0%,_#60a5fa_60%,_#dbeafe_100%)] p-6 text-white shadow-[0_28px_80px_rgba(37,99,235,0.18)] md:p-8">
-        <div className="grid gap-6 lg:grid-cols-[1fr_0.95fr] lg:items-end">
-          <div>
-            <div className="inline-flex items-center gap-2 rounded-full bg-white/16 px-4 py-2 text-sm font-semibold text-white/95">
-              <Receipt className="h-4 w-4" />
-              Recaudo y trazabilidad
-            </div>
-            <h1 className="mt-5 text-4xl font-black tracking-[-0.05em] md:text-5xl">Pagos del medico</h1>
-            <p className="mt-4 max-w-2xl text-base leading-8 text-blue-50 md:text-lg">
-              Visualiza que consultas ya fueron pagadas, cuanto queda pendiente por recaudar y como avanza el flujo financiero de tu agenda.
-            </p>
+      <motion.section
+        initial={reduce ? false : { opacity: 0, y: 22, scale: 0.99 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        transition={{ duration: 0.6, ease: EASE }}
+        className="relative overflow-hidden rounded-[32px] border border-white/80 bg-[linear-gradient(135deg,_#047857_0%,_#0d9488_45%,_#0891b2_100%)] p-7 text-center text-white shadow-[0_30px_90px_rgba(13,148,136,0.30)] md:p-9"
+      >
+        <div aria-hidden className="pointer-events-none absolute -right-12 -top-16 h-52 w-52 rounded-full bg-white/15 blur-3xl" />
+        <div aria-hidden className="pointer-events-none absolute -bottom-16 -left-10 h-52 w-52 rounded-full bg-cyan-300/25 blur-3xl" />
+        <div className="relative flex flex-col items-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-white/25 bg-white/15 px-4 py-2 text-sm font-semibold text-white backdrop-blur">
+            <Receipt className="h-4 w-4" />
+            Recaudo y trazabilidad
           </div>
-          <div className="grid gap-4 sm:grid-cols-2">
+          <h1 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Pagos del médico</h1>
+          <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-emerald-50 md:text-base">
+            Visualiza qué consultas ya fueron pagadas, cuánto queda pendiente por recaudar y cómo avanza el flujo financiero de tu agenda.
+          </p>
+          <div className="mt-6 grid w-full max-w-2xl grid-cols-2 gap-3 lg:grid-cols-4">
             <HeroMiniCard title="Recaudado" value={`$${Number(summary?.paidAmount || 0).toLocaleString('es-CO')}`} icon={Wallet} />
             <HeroMiniCard title="Pendiente" value={`$${Number(summary?.pendingCollectionAmount || 0).toLocaleString('es-CO')}`} icon={CreditCard} />
             <HeroMiniCard title="Pagos exitosos" value={summary?.paidTransactions || 0} icon={Receipt} />
             <HeroMiniCard title="PSE" value={summary?.pseTransactions || 0} icon={CreditCard} />
           </div>
         </div>
-      </section>
+      </motion.section>
 
       {error && <div className="rounded-2xl border border-red-100 bg-red-50 px-4 py-3 text-sm text-red-700">{error}</div>}
 
@@ -66,12 +75,12 @@ export function DoctorPayments() {
         <div className="grid gap-4 md:grid-cols-[1fr_auto_auto]">
           <FilterInput label="Buscar" value={filters.search} onChange={(value: string) => setFilters((current) => ({ ...current, search: value }))} />
           <SelectFilter label="Estado" value={filters.status} onChange={(value: string) => setFilters((current) => ({ ...current, status: value }))} options={['pagado', 'pendiente', 'autorizado', 'reembolsado']} />
-          <button onClick={loadPayments} className="self-end rounded-2xl bg-blue-600 px-5 py-3 text-sm font-semibold text-white transition hover:bg-blue-700">Aplicar filtro</button>
+          <button onClick={loadPayments} className="min-h-[44px] self-end rounded-2xl bg-gradient-to-r from-emerald-600 to-teal-600 px-5 py-3 text-sm font-semibold text-white shadow-lg shadow-emerald-600/25 transition hover:from-emerald-700 hover:to-teal-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-emerald-500 focus-visible:ring-offset-2">Aplicar filtro</button>
         </div>
 
         <div className="mt-6 space-y-4">
           {payments.length === 0 ? (
-            <EmptyState title="Sin pagos visibles" description="Cuando tus consultas tengan transacciones asociadas, apareceran aqui." />
+            <EmptyState title="Sin pagos visibles" description="Cuando tus consultas tengan transacciones asociadas, aparecerán aquí." />
           ) : (
             payments.map((payment) => (
               <div key={payment.id} className="rounded-[22px] bg-slate-50 p-4">
@@ -99,12 +108,12 @@ export function DoctorPayments() {
 
 function HeroMiniCard({ title, value, icon: Icon }: any) {
   return (
-    <div className="rounded-[24px] border border-white/18 bg-white/16 p-4 backdrop-blur">
-      <div className="w-fit rounded-2xl bg-white/16 p-3 text-white">
+    <div className="flex flex-col items-center rounded-[24px] border border-white/20 bg-white/15 p-4 text-center backdrop-blur">
+      <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-white/20 text-white">
         <Icon className="h-5 w-5" />
       </div>
-      <p className="mt-3 text-sm text-blue-50">{title}</p>
-      <p className="mt-1 text-2xl font-black tracking-[-0.04em] text-white">{value}</p>
+      <p className="mt-2.5 text-xl font-black tracking-[-0.04em] text-white">{value}</p>
+      <p className="mt-0.5 text-xs text-emerald-50">{title}</p>
     </div>
   );
 }

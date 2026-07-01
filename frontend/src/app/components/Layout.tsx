@@ -1,4 +1,5 @@
 import { ReactNode, useEffect, useState } from 'react';
+import { motion, useReducedMotion } from 'framer-motion';
 import {
   Activity,
   Bell,
@@ -34,17 +35,17 @@ const menuItems = {
     { id: 'doctor-dashboard', label: 'Inicio', icon: LayoutDashboard },
     { id: 'doctor-profile', label: 'Mi Perfil', icon: UserCircle },
     { id: 'doctor-schedule', label: 'Agenda', icon: Calendar },
-    { id: 'doctor-appointments', label: 'Gestion de Citas', icon: ClipboardList },
+    { id: 'doctor-appointments', label: 'Gestión de Citas', icon: ClipboardList },
     { id: 'doctor-payments', label: 'Pagos', icon: CreditCard },
     { id: 'notifications-center', label: 'Notificaciones', icon: Bell },
     { id: 'chat-center', label: 'Chat', icon: MessageCircleMore }
   ],
   patient: [
     { id: 'patient-dashboard', label: 'Inicio', icon: LayoutDashboard },
-    { id: 'patient-search-doctors', label: 'Buscar Medicos', icon: Stethoscope },
+    { id: 'patient-search-doctors', label: 'Buscar Médicos', icon: Stethoscope },
     { id: 'patient-book-appointment', label: 'Agendar Cita', icon: Calendar },
     { id: 'patient-appointments', label: 'Mis Citas', icon: Calendar },
-    { id: 'patient-history', label: 'Historia Clinica', icon: FileText },
+    { id: 'patient-history', label: 'Historia Clínica', icon: FileText },
     { id: 'patient-payments', label: 'Pagos', icon: CreditCard },
     { id: 'notifications-center', label: 'Notificaciones', icon: Bell },
     { id: 'chat-center', label: 'Chat', icon: MessageCircleMore },
@@ -52,7 +53,7 @@ const menuItems = {
   ],
   commissioner: [
     { id: 'commissioner-dashboard', label: 'Inicio', icon: LayoutDashboard },
-    { id: 'commissioner-codes', label: 'Codigos Referencia', icon: Code },
+    { id: 'commissioner-codes', label: 'Códigos Referencia', icon: Code },
     { id: 'commissioner-patients', label: 'Pacientes Vinculados', icon: Users },
     { id: 'commissioner-schedule', label: 'Agendar Citas', icon: Calendar },
     { id: 'commissioner-payments', label: 'Pagos', icon: CreditCard },
@@ -61,24 +62,25 @@ const menuItems = {
   ],
   admin: [
     { id: 'admin-dashboard', label: 'Inicio', icon: LayoutDashboard },
-    { id: 'admin-users', label: 'Gestion Usuarios', icon: Users },
-    { id: 'admin-doctor-review', label: 'Revision Medica', icon: ClipboardList },
+    { id: 'admin-users', label: 'Gestión Usuarios', icon: Users },
+    { id: 'admin-doctor-review', label: 'Revisión Médica', icon: ClipboardList },
     { id: 'admin-payments', label: 'Pagos', icon: CreditCard },
     { id: 'admin-video-consultations', label: 'Videoconsultas', icon: MessageCircleMore },
     { id: 'notifications-center', label: 'Notificaciones', icon: Bell },
     { id: 'chat-center', label: 'Chat', icon: MessageCircleMore },
-    { id: 'admin-settings', label: 'Configuracion', icon: Settings }
+    { id: 'admin-settings', label: 'Configuración', icon: Settings }
   ]
 };
 
 const roleLabels = {
-  doctor: 'Medico',
+  doctor: 'Médico',
   patient: 'Paciente',
   commissioner: 'Gestor',
   admin: 'Administrador'
 };
 
 export function Layout({ children, userRole, currentScreen, onNavigate, userName, onLogout }: LayoutProps) {
+  const reduce = useReducedMotion();
   const [isMobileOpen, setIsMobileOpen] = useState(false);
   const [unreadNotifications, setUnreadNotifications] = useState(0);
   const [unreadChats, setUnreadChats] = useState(0);
@@ -129,7 +131,7 @@ export function Layout({ children, userRole, currentScreen, onNavigate, userName
     <aside className="flex h-full w-72 flex-col border-r border-white/70 bg-white/78 backdrop-blur">
       <div className="border-b border-slate-100/80 p-6">
         <div className="flex items-center gap-3">
-          <div className="rounded-2xl bg-blue-600 p-2 shadow-lg shadow-blue-600/20">
+          <div className="rounded-2xl bg-gradient-to-br from-blue-600 to-indigo-600 p-2 shadow-lg shadow-indigo-600/25">
             <Activity className="h-6 w-6 text-white" />
           </div>
           <div>
@@ -163,8 +165,10 @@ export function Layout({ children, userRole, currentScreen, onNavigate, userName
               <button
                 key={item.id}
                 onClick={() => navigate(item.id)}
-                className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 transition-colors ${
-                  isActive ? 'bg-[linear-gradient(180deg,_#eff6ff,_#ffffff)] font-medium text-blue-700 shadow-sm' : 'text-gray-700 hover:bg-white'
+                className={`flex w-full items-center gap-3 rounded-2xl px-3 py-3 transition ${
+                  isActive
+                    ? 'bg-gradient-to-r from-blue-600 to-indigo-600 font-semibold text-white shadow-lg shadow-indigo-600/25'
+                    : 'text-slate-700 hover:bg-blue-50 hover:text-blue-700'
                 }`}
               >
                 <Icon className="h-5 w-5" />
@@ -175,7 +179,7 @@ export function Layout({ children, userRole, currentScreen, onNavigate, userName
         </div>
         <button onClick={onLogout} className="mt-4 flex w-full items-center gap-2 rounded-2xl border border-slate-200 bg-white px-3 py-3 text-gray-700 transition-colors hover:border-blue-200 hover:bg-blue-50">
           <LogOut className="h-4 w-4" />
-          <span className="text-sm">Cerrar sesion</span>
+          <span className="text-sm">Cerrar sesión</span>
         </button>
       </nav>
     </aside>
@@ -187,8 +191,15 @@ export function Layout({ children, userRole, currentScreen, onNavigate, userName
 
       {isMobileOpen && (
         <div className="fixed inset-0 z-40 flex lg:hidden">
-          <button className="flex-1 bg-gray-900/30" onClick={() => setIsMobileOpen(false)} />
-          {sidebar}
+          <motion.div
+            initial={reduce ? false : { x: '-100%' }}
+            animate={{ x: 0 }}
+            transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
+            className="h-full shadow-2xl shadow-blue-950/20"
+          >
+            {sidebar}
+          </motion.div>
+          <button aria-label="Cerrar menu" className="flex-1 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsMobileOpen(false)} />
         </div>
       )}
 
