@@ -60,7 +60,7 @@ export function ChatCenter() {
       setConversationDetail(response.data || null);
       await api.markChatRead(conversationId).catch(() => null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No fue posible abrir la conversacion.');
+      setError(err instanceof Error ? err.message : 'No fue posible abrir la conversación.');
     }
   }
 
@@ -93,13 +93,13 @@ export function ChatCenter() {
     try {
       const response = await api.openChatConversation({
         counterpartUserId,
-        subject: 'Conversacion operativa MediConnect'
+        subject: 'Conversación operativa MediConnect'
       });
       await loadConversations();
       setSelectedConversationId(response.data.id);
       setConversationDetail(response.data);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No fue posible iniciar la conversacion.');
+      setError(err instanceof Error ? err.message : 'No fue posible iniciar la conversación.');
     }
   }
 
@@ -139,7 +139,7 @@ export function ChatCenter() {
             <MessageCircleMore className="h-4 w-4" />
             Chat operativo
           </span>
-          <h1 className="mt-4 max-w-2xl text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Conversaciones seguras entre roles</h1>
+          <h1 className="mt-4 max-w-2xl text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Conversaciones Seguras entre Roles</h1>
           <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-cyan-50 md:text-base">
             Centraliza soporte de citas, pagos, agenda y coordinación operativa entre paciente, médico, gestor y administración con trazabilidad completa.
           </p>
@@ -202,7 +202,7 @@ export function ChatCenter() {
           <div className="rounded-[28px] border border-white/80 bg-white/92 p-5 shadow-[0_20px_60px_rgba(15,23,42,0.06)]">
             <div className="flex items-center justify-between gap-3">
               <div>
-                <h2 className="text-lg font-bold text-slate-900">Iniciar nueva conversación</h2>
+                <h2 className="text-lg font-bold text-slate-900">Iniciar Nueva Conversación</h2>
                 <p className="mt-1 text-sm text-slate-600">Solo verás contactos permitidos por tus reglas de alcance.</p>
               </div>
               <div className="rounded-2xl bg-gradient-to-br from-cyan-500 to-blue-600 p-3 text-white shadow-md shadow-cyan-600/20">
@@ -260,7 +260,7 @@ export function ChatCenter() {
                   <span className="rounded-full bg-blue-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-blue-700">{String(selectedConversation.type || '').replaceAll('_', ' ')}</span>
                   <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700">{String(selectedConversation.status || '').replaceAll('_', ' ')}</span>
                 </div>
-                <h2 className="mt-3 text-2xl font-bold text-slate-900">{selectedConversation.subject || 'Conversación operativa'}</h2>
+                <h2 className="mt-3 text-2xl font-bold text-slate-900">{selectedConversation.subject || 'Conversación Operativa'}</h2>
                 <p className="mt-2 text-sm text-slate-600">
                   {selectedConversation.participants?.map((participant: any) => participant.displayName).join(' · ')}
                 </p>

@@ -70,16 +70,16 @@ export function VerifyAccount({ onBackHome, userId, standalone = false }: Verify
       });
 
       if (result?.accessToken) {
-        setSuccess('Tu cuenta ya quedo verificada y activa. Ya puedes continuar dentro de MediConnect.');
+        setSuccess('Tu cuenta ya quedó verificada y activa. Ya puedes continuar dentro de MediConnect.');
       } else {
-        setSuccess('Canal verificado correctamente. Si aun falta otro canal, puedes completarlo desde aqui.');
+        setSuccess('Canal verificado correctamente. Si aún falta otro canal, puedes completarlo desde aquí.');
         if (standalone) {
           setFallbackStatus(result?.status || null);
         }
       }
       setCode('');
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No fue posible verificar el codigo.');
+      setError(err instanceof Error ? err.message : 'No fue posible verificar el código.');
     } finally {
       setBusyAction(null);
     }
@@ -97,9 +97,9 @@ export function VerifyAccount({ onBackHome, userId, standalone = false }: Verify
       if (standalone) {
         setFallbackStatus(status);
       }
-      setSuccess(`Reenviamos un nuevo codigo por ${channel === 'email' ? 'correo' : channel === 'sms' ? 'SMS' : 'WhatsApp'}.`);
+      setSuccess(`Reenviamos un nuevo código por ${channel === 'email' ? 'correo' : channel === 'sms' ? 'SMS' : 'WhatsApp'}.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No fue posible reenviar el codigo.');
+      setError(err instanceof Error ? err.message : 'No fue posible reenviar el código.');
     } finally {
       setBusyAction(null);
     }
@@ -109,8 +109,8 @@ export function VerifyAccount({ onBackHome, userId, standalone = false }: Verify
     <AppBackdrop>
       <div className="mx-auto grid min-h-screen w-full max-w-[1320px] lg:grid-cols-[1fr_1.02fr]">
         <AuthShowcase
-          title="Verifica tu cuenta y activa un acceso seguro a todo tu recorrido clinico."
-          description="MediConnect protege cada ingreso con validacion de correo y telefono para asegurar la comunicacion transaccional y el acompanamiento de tus citas."
+          title="Verifica tu cuenta y activa un acceso seguro a todo tu recorrido clínico."
+          description="MediConnect protege cada ingreso con validación de correo y teléfono para asegurar la comunicación transaccional y el acompañamiento de tus citas."
         />
 
         <section className="flex items-center justify-center p-5 lg:p-8">
@@ -131,7 +131,7 @@ export function VerifyAccount({ onBackHome, userId, standalone = false }: Verify
               <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 text-white shadow-[0_14px_30px_rgba(37,99,235,0.30)]">
                 <ShieldCheck className="h-7 w-7" />
               </div>
-              <h2 className="mt-4 text-3xl font-bold tracking-[-0.02em] text-gray-900">Activa tu cuenta</h2>
+              <h2 className="mt-4 text-3xl font-bold tracking-[-0.02em] text-gray-900">Activa tu Cuenta</h2>
               <p className="mt-2 max-w-lg text-sm leading-7 text-gray-600">
                 Antes de continuar, necesitamos validar tus canales de contacto para recordatorios, pagos y soporte.
               </p>
@@ -142,11 +142,11 @@ export function VerifyAccount({ onBackHome, userId, standalone = false }: Verify
                 <div className="rounded-3xl border border-blue-100 bg-blue-50/70 p-5">
                   <p className="text-sm font-medium text-blue-700">Estado general</p>
                   <h3 className="mt-2 text-xl font-bold text-slate-900">
-                    {effectiveStatus?.allVerified ? 'Cuenta verificada' : 'Verificacion pendiente'}
+                    {effectiveStatus?.allVerified ? 'Cuenta verificada' : 'Verificación pendiente'}
                   </h3>
                   <p className="mt-2 text-sm text-slate-600">
                     {effectiveStatus?.allVerified
-                      ? 'Tus canales estan completos. Ya puedes usar MediConnect con total normalidad.'
+                      ? 'Tus canales están completos. Ya puedes usar MediConnect con total normalidad.'
                       : 'Completa los canales pendientes para activar login completo, recordatorios y comunicaciones transaccionales.'}
                   </p>
                 </div>
@@ -180,7 +180,7 @@ export function VerifyAccount({ onBackHome, userId, standalone = false }: Verify
                             </div>
                             <div className="min-w-0">
                               <p className="text-sm font-semibold text-slate-900">
-                                {channel.channel === 'email' ? 'Correo electronico' : channel.channel === 'sms' ? 'Telefono SMS' : 'WhatsApp'}
+                                {channel.channel === 'email' ? 'Correo electrónico' : channel.channel === 'sms' ? 'Teléfono SMS' : 'WhatsApp'}
                               </p>
                               <p className="mt-1 break-all text-xs text-slate-500">{channel.destination}</p>
                               <p className="mt-2 text-xs text-slate-500">
@@ -217,9 +217,9 @@ export function VerifyAccount({ onBackHome, userId, standalone = false }: Verify
               </div>
 
               <div className="min-w-0 rounded-3xl border border-slate-200 bg-white p-5 shadow-sm">
-                <h3 className="text-lg font-bold text-slate-900">Ingresar codigo</h3>
+                <h3 className="text-lg font-bold text-slate-900">Ingresar Código</h3>
                 <p className="mt-2 text-sm text-slate-600">
-                  Selecciona un canal, ingresa el codigo OTP y valida tu acceso.
+                  Selecciona un canal, ingresa el código OTP y valida tu acceso.
                 </p>
 
                 <form className="mt-6 space-y-4" onSubmit={handleVerify}>
@@ -232,14 +232,14 @@ export function VerifyAccount({ onBackHome, userId, standalone = false }: Verify
                     >
                       {channels.map((channel: any) => (
                         <option key={channel.channel} value={channel.channel}>
-                          {channel.channel === 'email' ? 'Correo electronico' : channel.channel === 'sms' ? 'SMS' : 'WhatsApp'}
+                          {channel.channel === 'email' ? 'Correo electrónico' : channel.channel === 'sms' ? 'SMS' : 'WhatsApp'}
                         </option>
                       ))}
                     </select>
                   </label>
 
                   <label className="block">
-                    <span className="mb-2 block text-sm font-medium text-slate-700">Codigo OTP</span>
+                    <span className="mb-2 block text-sm font-medium text-slate-700">Código OTP</span>
                     <input
                       value={code}
                       onChange={(event) => setCode(event.target.value)}
@@ -265,7 +265,7 @@ export function VerifyAccount({ onBackHome, userId, standalone = false }: Verify
                         Validando...
                       </>
                     ) : (
-                      'Validar codigo'
+                      'Validar código'
                     )}
                   </button>
                 </form>
@@ -275,7 +275,7 @@ export function VerifyAccount({ onBackHome, userId, standalone = false }: Verify
                     onClick={logout}
                     className="mt-4 flex min-h-[44px] w-full items-center justify-center rounded-2xl border border-slate-200 bg-white px-4 py-3 text-sm font-medium text-slate-600 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-2"
                   >
-                    Salir y volver mas tarde
+                    Salir y volver más tarde
                   </button>
                 )}
               </div>

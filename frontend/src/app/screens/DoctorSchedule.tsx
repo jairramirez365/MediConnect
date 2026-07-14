@@ -82,7 +82,7 @@ export function DoctorSchedule() {
             <ShieldCheck className="h-4 w-4" />
             Configura tu disponibilidad real
           </div>
-          <h1 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Agenda médica</h1>
+          <h1 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Agenda Médica</h1>
           <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-emerald-50 md:text-base">
             Define bloques de atención, organiza tu jornada y habilita slots que luego podrán ser reservados por pacientes.
           </p>

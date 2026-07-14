@@ -93,7 +93,7 @@ export function DoctorDashboard({
             <ShieldCheck className="h-4 w-4" />
             Tu jornada médica, más clara
           </div>
-          <h1 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Inicio médico</h1>
+          <h1 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Inicio Médico</h1>
           <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-blue-50 md:text-base">
             Revisa tu agenda, confirma consultas y mantente cerca de cada paciente con una vista simple y accionable.
           </p>
@@ -127,7 +127,7 @@ export function DoctorDashboard({
         <div className="min-w-0 space-y-6">
           <div className="rounded-[28px] border border-white/80 bg-white/92 p-6 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
             <div className="mb-5 text-center">
-              <h2 className="text-2xl font-bold text-slate-950">Tu agenda inmediata</h2>
+              <h2 className="text-2xl font-bold text-slate-950">Tu Agenda Inmediata</h2>
               <p className="mt-1 text-sm text-slate-500">Las siguientes consultas que requieren tu atención.</p>
             </div>
 
@@ -168,7 +168,7 @@ export function DoctorDashboard({
         <div className="min-w-0 space-y-6">
           <div className="rounded-[28px] border border-white/80 bg-white/92 p-6 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
             <div className="mb-5 text-center">
-              <h2 className="text-2xl font-bold text-slate-950">Actividad reciente</h2>
+              <h2 className="text-2xl font-bold text-slate-950">Actividad Reciente</h2>
               <p className="mt-1 text-sm text-slate-500">Resumen rápido del movimiento más reciente en tu agenda.</p>
             </div>
             <div className="space-y-4">

@@ -149,7 +149,7 @@ export function AdminDashboard({ onGoToUsers, onGoToDoctorReview, onGoToPayments
         <div className="min-w-0 rounded-[28px] border border-slate-200/80 bg-white/95 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
           <div className="flex items-center justify-between gap-4">
             <div>
-              <h3 className="text-xl font-bold text-slate-900">Actividad reciente</h3>
+              <h3 className="text-xl font-bold text-slate-900">Actividad Reciente</h3>
               <p className="mt-1 text-sm text-slate-500">Últimas citas registradas en el sistema.</p>
             </div>
             <span className="rounded-full bg-slate-100 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-slate-500">
@@ -189,7 +189,7 @@ export function AdminDashboard({ onGoToUsers, onGoToDoctorReview, onGoToPayments
         </div>
 
         <div className="min-w-0 rounded-[28px] border border-slate-200/80 bg-white/95 p-6 shadow-[0_18px_60px_rgba(15,23,42,0.08)]">
-          <h3 className="text-xl font-bold text-slate-900">Prioridades del día</h3>
+          <h3 className="text-xl font-bold text-slate-900">Prioridades del Día</h3>
           <p className="mt-1 text-sm text-slate-500">Acciones sugeridas para mantener la operación estable.</p>
 
           <div className="mt-6 space-y-4">

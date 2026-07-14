@@ -32,7 +32,7 @@ export function Login({ onGoRegister, onBackHome, onRequireVerification }: Login
         onRequireVerification(err.details.userId);
         return;
       }
-      setError(err instanceof Error ? err.message : 'No fue posible iniciar sesion.');
+      setError(err instanceof Error ? err.message : 'No fue posible iniciar sesión.');
     } finally {
       setIsSubmitting(false);
     }
@@ -42,8 +42,8 @@ export function Login({ onGoRegister, onBackHome, onRequireVerification }: Login
     <AppBackdrop>
       <div className="mx-auto grid min-h-screen w-full max-w-[1240px] lg:grid-cols-[1.05fr_0.95fr]">
         <AuthShowcase
-          title="Gestion clinica, citas y pacientes en una experiencia mas humana."
-          description="El acceso a MediConnect tambien debe sentirse parte del mismo recorrido visual: claro, confiable y con continuidad hacia el producto real."
+          title="Gestión clínica, citas y pacientes en una experiencia más humana."
+          description="El acceso a MediConnect también debe sentirse parte del mismo recorrido visual: claro, confiable y con continuidad hacia el producto real."
         />
 
         <section className="flex items-center justify-center p-5 lg:p-8">
@@ -64,7 +64,7 @@ export function Login({ onGoRegister, onBackHome, onRequireVerification }: Login
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 shadow-[0_14px_30px_rgba(37,99,235,0.30)]">
                 <Activity className="h-7 w-7 text-white" />
               </div>
-              <h2 className="mt-4 text-3xl font-bold tracking-[-0.02em] text-gray-900">Iniciar sesion</h2>
+              <h2 className="mt-4 text-3xl font-bold tracking-[-0.02em] text-gray-900">Iniciar Sesión</h2>
               <p className="mt-2 max-w-sm text-sm leading-7 text-gray-600">
                 Ingresa con tu cuenta para continuar con tu experiencia en MediConnect.
               </p>
@@ -72,7 +72,7 @@ export function Login({ onGoRegister, onBackHome, onRequireVerification }: Login
 
             <form className="mt-7 space-y-5" onSubmit={handleSubmit}>
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-gray-700">Correo electronico</span>
+                <span className="mb-2 block text-sm font-medium text-gray-700">Correo electrónico</span>
                 <div className="group relative">
                   <Mail className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 transition group-focus-within:text-blue-600" />
                   <input
@@ -87,7 +87,7 @@ export function Login({ onGoRegister, onBackHome, onRequireVerification }: Login
               </label>
 
               <label className="block">
-                <span className="mb-2 block text-sm font-medium text-gray-700">Contrasena</span>
+                <span className="mb-2 block text-sm font-medium text-gray-700">Contraseña</span>
                 <div className="group relative">
                   <Lock className="absolute left-3.5 top-1/2 h-5 w-5 -translate-y-1/2 text-gray-400 transition group-focus-within:text-blue-600" />
                   <input
@@ -96,7 +96,7 @@ export function Login({ onGoRegister, onBackHome, onRequireVerification }: Login
                     type="password"
                     autoComplete="current-password"
                     className="w-full rounded-2xl border border-gray-200 bg-gray-50/70 py-3.5 pl-11 pr-4 text-gray-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
-                    placeholder="Tu contrasena"
+                    placeholder="Tu contraseña"
                   />
                 </div>
               </label>
@@ -125,7 +125,7 @@ export function Login({ onGoRegister, onBackHome, onRequireVerification }: Login
             </form>
 
             <div className="mt-7 border-t border-gray-100 pt-5 text-center text-sm text-gray-600">
-              No tienes cuenta?{' '}
+              ¿No tienes cuenta?{' '}
               <button
                 onClick={onGoRegister}
                 className="inline-flex items-center rounded-md px-1 py-0.5 font-semibold text-blue-600 transition hover:text-blue-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-offset-1"

@@ -229,7 +229,7 @@ export function NotificationsCenter() {
                     <span className="rounded-full bg-slate-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-slate-700">{formatTag(selected.channel)}</span>
                     <span className="rounded-full bg-emerald-100 px-3 py-1 text-[11px] font-semibold uppercase tracking-wide text-emerald-700">{formatTag(selected.status)}</span>
                   </div>
-                  <h2 className="mt-4 text-2xl font-bold text-slate-900">Detalle de notificación</h2>
+                  <h2 className="mt-4 text-2xl font-bold text-slate-900">Detalle de Notificación</h2>
                 </div>
 
                 <div className="flex gap-2">

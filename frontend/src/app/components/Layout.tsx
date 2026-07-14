@@ -199,7 +199,7 @@ export function Layout({ children, userRole, currentScreen, onNavigate, userName
           >
             {sidebar}
           </motion.div>
-          <button aria-label="Cerrar menu" className="flex-1 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsMobileOpen(false)} />
+          <button aria-label="Cerrar menú" className="flex-1 bg-slate-900/40 backdrop-blur-sm" onClick={() => setIsMobileOpen(false)} />
         </div>
       )}
 
