@@ -143,7 +143,28 @@ export function PublicSite({ onLogin, onRegister }: PublicSiteProps) {
   function goToSection(section: SectionKey) {
     setActiveSection(section);
     setMobileMenuOpen(false);
-    sectionMap[section].current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    const el = sectionMap[section].current;
+    if (!el) return;
+
+    const targetY = el.getBoundingClientRect().top + window.scrollY - 96;
+    if (reduce) {
+      window.scrollTo(0, targetY);
+      return;
+    }
+
+    const startY = window.scrollY;
+    const distance = targetY - startY;
+    const duration = Math.min(500, Math.max(260, Math.abs(distance) * 0.35));
+    const easeOutCubic = (t: number) => 1 - Math.pow(1 - t, 3);
+    let startTs: number | null = null;
+
+    function step(ts: number) {
+      if (startTs === null) startTs = ts;
+      const progress = Math.min(1, (ts - startTs) / duration);
+      window.scrollTo(0, startY + distance * easeOutCubic(progress));
+      if (progress < 1) requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
   }
 
   function handleLogin() {
@@ -166,7 +187,7 @@ export function PublicSite({ onLogin, onRegister }: PublicSiteProps) {
       <AmbientBackground reduce={reduce} />
 
       <div className="relative mx-auto max-w-7xl px-4 pb-20 pt-6 md:px-8 lg:px-10">
-        <header className="sticky top-3 z-30 rounded-[28px] border border-white/70 bg-white/82 px-4 py-3 shadow-[0_24px_80px_rgba(37,99,235,0.08)] backdrop-blur md:px-6 md:py-4">
+        <header className="sticky top-3 z-30 rounded-[28px] border border-white/70 bg-white/90 px-4 py-3 shadow-[0_24px_80px_rgba(37,99,235,0.08)] md:bg-white/82 md:px-6 md:py-4 md:backdrop-blur">
           <div className="flex items-center justify-between gap-4">
             <button onClick={() => goToSection('home')} className="flex shrink-0 items-center gap-3 text-left">
               <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 shadow-[0_18px_40px_rgba(37,99,235,0.28)] md:h-14 md:w-14">
@@ -210,25 +231,23 @@ export function PublicSite({ onLogin, onRegister }: PublicSiteProps) {
 
           <div
             id="mobile-menu"
-            className={`grid overflow-hidden transition-[grid-template-rows] duration-300 ease-out xl:hidden motion-reduce:transition-none ${
-              mobileMenuOpen ? 'grid-rows-[1fr]' : 'grid-rows-[0fr]'
+            className={`absolute inset-x-0 top-full z-40 mt-2 origin-top rounded-[24px] border border-white/70 bg-white/95 p-3 shadow-[0_24px_80px_rgba(37,99,235,0.12)] transition-[opacity,transform] duration-200 ease-out will-change-[opacity,transform] xl:hidden motion-reduce:transition-none ${
+              mobileMenuOpen ? 'pointer-events-auto translate-y-0 opacity-100' : 'pointer-events-none -translate-y-2 opacity-0'
             }`}
           >
-            <div className="min-h-0 overflow-hidden">
-              <nav className="mt-3 flex flex-col gap-1 border-t border-slate-100 pt-3 text-base font-medium">
-                <MobileNavLink active={activeSection === 'home'} onClick={() => goToSection('home')}>Inicio</MobileNavLink>
-                <MobileNavLink active={activeSection === 'specialists'} onClick={() => goToSection('specialists')}>Especialistas</MobileNavLink>
-                <MobileNavLink active={activeSection === 'roles'} onClick={() => goToSection('roles')}>¿Para quién?</MobileNavLink>
-                <MobileNavLink active={activeSection === 'how-it-works'} onClick={() => goToSection('how-it-works')}>¿Cómo funciona?</MobileNavLink>
-              </nav>
-              <div className="mt-3 flex flex-col gap-3 border-t border-slate-100 pt-3">
-                <button onClick={handleLogin} className="rounded-2xl border border-slate-200 bg-slate-50 px-6 py-3 text-center font-semibold text-slate-800 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
-                  Iniciar sesión
-                </button>
-                <button onClick={handleRegister} className="rounded-2xl bg-blue-600 px-6 py-3 text-center font-semibold text-white shadow-[0_16px_40px_rgba(37,99,235,0.25)] transition hover:bg-blue-700">
-                  Registrarse
-                </button>
-              </div>
+            <nav className="flex flex-col gap-1 text-base font-medium">
+              <MobileNavLink active={activeSection === 'home'} onClick={() => goToSection('home')}>Inicio</MobileNavLink>
+              <MobileNavLink active={activeSection === 'specialists'} onClick={() => goToSection('specialists')}>Especialistas</MobileNavLink>
+              <MobileNavLink active={activeSection === 'roles'} onClick={() => goToSection('roles')}>¿Para quién?</MobileNavLink>
+              <MobileNavLink active={activeSection === 'how-it-works'} onClick={() => goToSection('how-it-works')}>¿Cómo funciona?</MobileNavLink>
+            </nav>
+            <div className="mt-3 flex flex-col gap-3 border-t border-slate-100 pt-3">
+              <button onClick={handleLogin} className="rounded-2xl border border-slate-200 bg-slate-50 px-6 py-3 text-center font-semibold text-slate-800 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
+                Iniciar sesión
+              </button>
+              <button onClick={handleRegister} className="rounded-2xl bg-blue-600 px-6 py-3 text-center font-semibold text-white shadow-[0_16px_40px_rgba(37,99,235,0.25)] transition hover:bg-blue-700">
+                Registrarse
+              </button>
             </div>
           </div>
         </header>
@@ -464,13 +483,13 @@ export function PublicSite({ onLogin, onRegister }: PublicSiteProps) {
               aria-hidden
               animate={reduce ? undefined : { y: [0, -18, 0], rotate: [0, 8, 0] }}
               transition={{ duration: 9, repeat: Infinity, ease: 'easeInOut' }}
-              className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-[40px] bg-white/10"
+              className="pointer-events-none absolute -right-10 -top-10 h-48 w-48 rounded-[40px] bg-white/10 will-change-transform"
             />
             <motion.div
               aria-hidden
               animate={reduce ? undefined : { y: [0, 16, 0], rotate: [0, -6, 0] }}
               transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut' }}
-              className="pointer-events-none absolute -bottom-12 left-1/3 h-40 w-40 rounded-full bg-white/10"
+              className="pointer-events-none absolute -bottom-12 left-1/3 h-40 w-40 rounded-full bg-white/10 will-change-transform"
             />
             <div className="relative flex flex-col items-center gap-8 text-center">
               <div className="max-w-2xl">
@@ -512,16 +531,16 @@ export function PublicSite({ onLogin, onRegister }: PublicSiteProps) {
 
 function AmbientBackground({ reduce }: { reduce: boolean | null }) {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 -z-0 overflow-hidden">
+    <div aria-hidden className="pointer-events-none absolute inset-0 -z-0 hidden overflow-hidden md:block">
       <motion.div
         animate={reduce ? undefined : { y: [0, 40, 0], x: [0, 20, 0] }}
         transition={{ duration: 16, repeat: Infinity, ease: 'easeInOut' }}
-        className="absolute -left-24 top-24 h-96 w-96 rounded-full bg-blue-400/20 blur-[120px]"
+        className="absolute -left-24 top-24 h-96 w-96 rounded-full bg-blue-400/20 blur-[120px] will-change-transform [backface-visibility:hidden]"
       />
       <motion.div
         animate={reduce ? undefined : { y: [0, -50, 0], x: [0, -24, 0] }}
         transition={{ duration: 20, repeat: Infinity, ease: 'easeInOut' }}
-        className="absolute right-[-10%] top-[40%] h-[28rem] w-[28rem] rounded-full bg-blue-300/20 blur-[140px]"
+        className="absolute right-[-10%] top-[40%] h-[28rem] w-[28rem] rounded-full bg-blue-300/20 blur-[140px] will-change-transform [backface-visibility:hidden]"
       />
     </div>
   );
@@ -534,7 +553,7 @@ function HeroIllustration({ reduce }: { reduce: boolean | null }) {
       <motion.div
         animate={reduce ? undefined : { y: [0, -14, 0] }}
         transition={{ duration: 7, repeat: Infinity, ease: 'easeInOut' }}
-        className="relative mx-auto max-w-[720px] rounded-[48px] border border-white/80 bg-[linear-gradient(180deg,_rgba(255,255,255,0.94),_rgba(235,244,255,0.96))] p-5 shadow-[0_30px_100px_rgba(37,99,235,0.18)] md:p-6"
+        className="relative mx-auto max-w-[720px] rounded-[48px] border border-white/80 bg-[linear-gradient(180deg,_rgba(255,255,255,0.94),_rgba(235,244,255,0.96))] p-5 shadow-[0_30px_100px_rgba(37,99,235,0.18)] will-change-transform md:p-6"
       >
         <div className="relative overflow-visible">
           <FloatingChip reduce={reduce} className="-left-5 top-6 hidden md:flex" delay={0.2} icon={Calendar} />
