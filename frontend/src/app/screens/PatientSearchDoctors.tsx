@@ -61,7 +61,7 @@ export function PatientSearchDoctors({ onViewDoctor, onBookAppointment }: Patien
       setCatalogDoctors(rows);
       setDoctors(rows);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No fue posible cargar medicos.');
+      setError(err instanceof Error ? err.message : 'No fue posible cargar médicos.');
     } finally {
       setIsLoading(false);
     }

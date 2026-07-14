@@ -56,7 +56,7 @@ export function DoctorPayments() {
             <Receipt className="h-4 w-4" />
             Recaudo y trazabilidad
           </div>
-          <h1 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Pagos del médico</h1>
+          <h1 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Pagos del Médico</h1>
           <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-emerald-50 md:text-base">
             Visualiza qué consultas ya fueron pagadas, cuánto queda pendiente por recaudar y cómo avanza el flujo financiero de tu agenda.
           </p>

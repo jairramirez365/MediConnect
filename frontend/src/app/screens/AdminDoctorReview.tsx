@@ -72,7 +72,7 @@ export function AdminDoctorReview() {
             <ShieldCheck className="h-4 w-4" />
             Validación operativa de médicos
           </div>
-          <h1 className="mt-4 max-w-2xl text-balance text-2xl font-black tracking-[-0.03em] md:text-4xl">Revisión médica</h1>
+          <h1 className="mt-4 max-w-2xl text-balance text-2xl font-black tracking-[-0.03em] md:text-4xl">Revisión Médica</h1>
           <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-cyan-50 md:text-base">
             Centraliza aprobaciones, rechazos y control de documentación en un flujo claro y responsable para el equipo administrador.
           </p>

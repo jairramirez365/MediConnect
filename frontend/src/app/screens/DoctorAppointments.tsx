@@ -76,7 +76,7 @@ export function DoctorAppointments({ onOpenVideoConsultation }: { onOpenVideoCon
             <ClipboardList className="h-4 w-4" />
             Gestión de consultas
           </div>
-          <h2 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Gestión de citas</h2>
+          <h2 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Gestión de Citas</h2>
           <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-cyan-50 md:text-base">
             Confirma, cancela o completa consultas siguiendo el flujo de estados del backend.
           </p>

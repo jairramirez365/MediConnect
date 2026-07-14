@@ -99,7 +99,7 @@ export function PatientPayments() {
             <Landmark className="h-4 w-4" />
             Pagos conectados
           </div>
-          <h1 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Tus pagos y consultas</h1>
+          <h1 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Tus Pagos y Consultas</h1>
           <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-fuchsia-50 md:text-base">
             Revisa el estado de tus transacciones, identifica citas pendientes de pago y avanza por un checkout preparado para integración PSE.
           </p>
@@ -119,7 +119,7 @@ export function PatientPayments() {
         <div className="rounded-[28px] border border-white/80 bg-white/92 p-6 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
           <div className="mb-5 flex items-center justify-between gap-4">
             <div>
-              <h2 className="text-2xl font-bold text-slate-950">Citas pendientes de pago</h2>
+              <h2 className="text-2xl font-bold text-slate-950">Citas Pendientes de Pago</h2>
               <p className="mt-1 text-sm text-slate-500">Todos los pagos se procesan por PSE y confirman el preagendamiento.</p>
             </div>
           </div>
@@ -169,7 +169,7 @@ export function PatientPayments() {
           <div className="rounded-[28px] border border-white/80 bg-white/92 p-6 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
             <div className="mb-5 flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-slate-950">Actividad reciente</h2>
+                <h2 className="text-2xl font-bold text-slate-950">Actividad Reciente</h2>
                 <p className="mt-1 text-sm text-slate-500">Tus últimas transacciones y su estado operativo.</p>
               </div>
               <span className="rounded-full bg-blue-50 px-3 py-1 text-xs font-semibold uppercase tracking-[0.2em] text-blue-700">

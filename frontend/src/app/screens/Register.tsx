@@ -14,7 +14,7 @@ type RegisterProps = {
 
 const roleOptions = [
   { value: 'paciente', label: 'Paciente', icon: HeartPulse },
-  { value: 'medico', label: 'Medico', icon: Stethoscope },
+  { value: 'medico', label: 'Médico', icon: Stethoscope },
   { value: 'comisionista', label: 'Gestor', icon: Handshake }
 ] as const;
 
@@ -91,8 +91,8 @@ export function Register({ onGoLogin, onBackHome }: RegisterProps) {
     <AppBackdrop>
       <div className="mx-auto grid min-h-screen w-full max-w-[1320px] lg:grid-cols-[1fr_1.08fr]">
         <AuthShowcase
-          title="Crea tu cuenta y continua dentro de una experiencia consistente."
-          description="Registro, descubrimiento y producto interno deben sentirse como una sola aplicacion. Esta pantalla ya forma parte de ese mismo ecosistema."
+          title="Crea tu cuenta y continúa dentro de una experiencia consistente."
+          description="Registro, descubrimiento y producto interno deben sentirse como una sola aplicación. Esta pantalla ya forma parte de ese mismo ecosistema."
         />
 
         <div className="flex items-center justify-center p-5 lg:p-8">
@@ -116,9 +116,9 @@ export function Register({ onGoLogin, onBackHome }: RegisterProps) {
               <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br from-blue-600 to-blue-500 shadow-[0_14px_30px_rgba(37,99,235,0.30)]">
                 <Activity className="h-7 w-7 text-white" />
               </div>
-              <h2 className="mt-4 text-3xl font-bold tracking-[-0.02em] text-gray-900">Crear cuenta</h2>
+              <h2 className="mt-4 text-3xl font-bold tracking-[-0.02em] text-gray-900">Crear Cuenta</h2>
               <p className="mt-2 max-w-lg text-sm leading-7 text-gray-600">
-                Registro conectado al backend. Los medicos quedan pendientes de documentacion.
+                Registro conectado al backend. Los médicos quedan pendientes de documentación.
               </p>
             </div>
 
@@ -154,10 +154,10 @@ export function Register({ onGoLogin, onBackHome }: RegisterProps) {
               <div className="grid gap-4 md:grid-cols-2">
                 <Field name="firstName" label="Nombres" required />
                 <Field name="lastName" label="Apellidos" required />
-                <Field name="email" label="Correo electronico" type="email" required />
-                <Field name="password" label="Contrasena" type="password" required placeholder="Minimo 8 caracteres" />
-                <Field name="phone" label="Telefono" />
-                <Field name="documentNumber" label="Numero de documento" required />
+                <Field name="email" label="Correo electrónico" type="email" required />
+                <Field name="password" label="Contraseña" type="password" required placeholder="Mínimo 8 caracteres" />
+                <Field name="phone" label="Teléfono" />
+                <Field name="documentNumber" label="Número de documento" required />
                 <Field name="documentType" label="Tipo de documento" defaultValue="CC" required />
                 <ColombiaLocationFields
                   departmentCode={departmentCode}
@@ -184,19 +184,19 @@ export function Register({ onGoLogin, onBackHome }: RegisterProps) {
 
                 {role === 'medico' && (
                   <>
-                    <Field name="medicalLicenseNumber" label="Registro medico" required />
+                    <Field name="medicalLicenseNumber" label="Registro médico" required />
                     <Field name="consultationFee" label="Valor consulta" type="number" required />
-                    <Field name="yearsOfExperience" label="Anos de experiencia" type="number" />
+                    <Field name="yearsOfExperience" label="Años de experiencia" type="number" />
                     <SelectField name="primarySpecialtyId" label="Especialidad principal" options={specialties} required />
                     <SelectField name="secondarySpecialtyId" label="Segunda especialidad" options={specialties} />
-                    <Field name="professionalBio" label="Biografia profesional" />
+                    <Field name="professionalBio" label="Biografía profesional" />
                   </>
                 )}
 
                 {role === 'comisionista' && (
                   <>
-                    <Field name="mainReferralCode" label="Codigo referido principal" required />
-                    <Field name="baseCommissionPercentage" label="Porcentaje comision base" type="number" defaultValue="5" required />
+                    <Field name="mainReferralCode" label="Código referido principal" required />
+                    <Field name="baseCommissionPercentage" label="Porcentaje comisión base" type="number" defaultValue="5" required />
                   </>
                 )}
               </div>
@@ -252,7 +252,7 @@ function SelectField({ label, options, ...props }: any) {
         {...props}
         className="w-full rounded-2xl border border-gray-200 bg-gray-50/70 px-4 py-3.5 text-gray-900 outline-none transition focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-100"
       >
-        <option value="">Selecciona una opcion</option>
+        <option value="">Selecciona una opción</option>
         {options.map((option: any) => (
           <option key={option.id} value={option.id}>{option.name}</option>
         ))}

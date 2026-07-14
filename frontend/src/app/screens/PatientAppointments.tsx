@@ -65,7 +65,7 @@ export function PatientAppointments({
       await api.respondCommissionAgentChatRequest(id, { action });
       await loadAppointments();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'No fue posible actualizar la participacion del gestor en el chat.');
+      setError(err instanceof Error ? err.message : 'No fue posible actualizar la participación del gestor en el chat.');
     }
   }
 
@@ -106,7 +106,7 @@ export function PatientAppointments({
             <ShieldCheck className="h-4 w-4" />
             Seguimiento claro de tu agenda
           </div>
-          <h2 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Gestión de citas</h2>
+          <h2 className="mt-4 text-balance text-3xl font-black tracking-[-0.04em] md:text-4xl">Gestión de Citas</h2>
           <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-blue-50 md:text-base">
             Filtra tus citas y abre el historial clínico desde cada consulta para mantener toda la información unida al recorrido real.
           </p>

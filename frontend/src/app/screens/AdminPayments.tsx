@@ -66,7 +66,7 @@ export function AdminPayments() {
             <Landmark className="h-4 w-4" />
             Control financiero transversal
           </div>
-          <h1 className="mt-4 max-w-2xl text-balance text-2xl font-black tracking-[-0.03em] md:text-4xl">Gestión de pagos del administrador</h1>
+          <h1 className="mt-4 max-w-2xl text-balance text-2xl font-black tracking-[-0.03em] md:text-4xl">Gestión de Pagos del Administrador</h1>
           <p className="mt-3 max-w-xl text-pretty text-sm leading-7 text-emerald-50 md:text-base">
             Supervisa pagos del sistema, estados PSE en staging, reembolsos y el flujo económico completo de las consultas.
           </p>

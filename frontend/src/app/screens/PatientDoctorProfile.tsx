@@ -143,7 +143,7 @@ export function PatientDoctorProfile({
       <section className="rounded-[28px] border border-white/80 bg-white/92 p-6 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
         <div className="mb-5 flex flex-col items-center gap-3 text-center">
           <div>
-            <h2 className="text-2xl font-bold text-slate-950">Próximos horarios disponibles</h2>
+            <h2 className="text-2xl font-bold text-slate-950">Próximos Horarios Disponibles</h2>
             <p className="mt-1 text-sm text-slate-500">Vista rápida para que sepas si quieres avanzar al agendamiento ahora mismo.</p>
           </div>
           <button

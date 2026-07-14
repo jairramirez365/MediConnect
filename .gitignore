@@ -35,3 +35,8 @@ Thumbs.db
 .cache/
 .parcel-cache/
 .eslintcache
+
+# Claude Code (local, not shared)
+.claude/
+CLAUDE.md
+".playwright-mcp/" 

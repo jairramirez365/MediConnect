@@ -183,8 +183,8 @@ export function PublicSite({ onLogin, onRegister }: PublicSiteProps) {
             <nav className="hidden items-center gap-1 text-sm font-medium text-slate-700 xl:flex xl:gap-2 xl:text-base">
               <NavButton active={activeSection === 'home'} onClick={() => goToSection('home')}>Inicio</NavButton>
               <NavButton active={activeSection === 'specialists'} onClick={() => goToSection('specialists')}>Especialistas</NavButton>
-              <NavButton active={activeSection === 'roles'} onClick={() => goToSection('roles')}>Para quién</NavButton>
-              <NavButton active={activeSection === 'how-it-works'} onClick={() => goToSection('how-it-works')}>Cómo funciona</NavButton>
+              <NavButton active={activeSection === 'roles'} onClick={() => goToSection('roles')}>¿Para quién?</NavButton>
+              <NavButton active={activeSection === 'how-it-works'} onClick={() => goToSection('how-it-works')}>¿Cómo funciona?</NavButton>
             </nav>
 
             <div className="hidden shrink-0 items-center gap-3 xl:flex">
@@ -218,8 +218,8 @@ export function PublicSite({ onLogin, onRegister }: PublicSiteProps) {
               <nav className="mt-3 flex flex-col gap-1 border-t border-slate-100 pt-3 text-base font-medium">
                 <MobileNavLink active={activeSection === 'home'} onClick={() => goToSection('home')}>Inicio</MobileNavLink>
                 <MobileNavLink active={activeSection === 'specialists'} onClick={() => goToSection('specialists')}>Especialistas</MobileNavLink>
-                <MobileNavLink active={activeSection === 'roles'} onClick={() => goToSection('roles')}>Para quién</MobileNavLink>
-                <MobileNavLink active={activeSection === 'how-it-works'} onClick={() => goToSection('how-it-works')}>Cómo funciona</MobileNavLink>
+                <MobileNavLink active={activeSection === 'roles'} onClick={() => goToSection('roles')}>¿Para quién?</MobileNavLink>
+                <MobileNavLink active={activeSection === 'how-it-works'} onClick={() => goToSection('how-it-works')}>¿Cómo funciona?</MobileNavLink>
               </nav>
               <div className="mt-3 flex flex-col gap-3 border-t border-slate-100 pt-3">
                 <button onClick={handleLogin} className="rounded-2xl border border-slate-200 bg-slate-50 px-6 py-3 text-center font-semibold text-slate-800 transition hover:border-blue-200 hover:bg-blue-50 hover:text-blue-700">
@@ -240,16 +240,23 @@ export function PublicSite({ onLogin, onRegister }: PublicSiteProps) {
           animate="show"
           className="grid scroll-mt-32 items-center gap-10 pb-12 pt-10 md:gap-12 md:pb-14 lg:grid-cols-[1.02fr_0.98fr] lg:pt-16"
         >
-          <div>
+          <div className="relative flex flex-col items-center text-center lg:items-start lg:text-left">
+            <div aria-hidden className="pointer-events-none absolute -inset-x-8 -inset-y-10 -z-0 lg:-inset-x-16 lg:-inset-y-16">
+              <div className="absolute left-1/2 top-4 h-72 w-72 -translate-x-1/2 rounded-full bg-[radial-gradient(circle,_rgba(37,99,235,0.26),_transparent_72%)] blur-3xl lg:left-0 lg:h-80 lg:w-80 lg:translate-x-0" />
+              <div className="absolute -left-4 top-1/3 h-72 w-72 rounded-full bg-[radial-gradient(circle,_rgba(6,182,212,0.32),_transparent_72%)] blur-3xl lg:h-80 lg:w-80" />
+              <div className="absolute -right-4 top-1/2 h-72 w-72 rounded-full bg-[radial-gradient(circle,_rgba(124,58,237,0.28),_transparent_72%)] blur-3xl lg:right-1/4 lg:h-80 lg:w-80" />
+              <div className="absolute bottom-0 left-1/4 h-64 w-64 rounded-full bg-[radial-gradient(circle,_rgba(37,99,235,0.20),_transparent_72%)] blur-3xl lg:h-72 lg:w-72" />
+            </div>
+            <div className="relative z-10 flex w-full flex-col items-center lg:items-start">
             <motion.div
               variants={fadeUp}
               className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-blue-50 px-4 py-2.5 text-sm font-semibold text-blue-700 shadow-sm md:py-3 md:text-lg"
             >
               <ShieldCheck className="h-4 w-4 md:h-5 md:w-5" />
-              Plataforma health-tech multirol
+              Plataforma Health-Tech Multirol
             </motion.div>
 
-            <div className="mt-6 max-w-3xl md:mt-8">
+            <div className="mx-auto mt-6 max-w-3xl md:mt-8 lg:mx-0">
               <h2 className="text-balance text-[2.5rem] font-black leading-[1.02] tracking-[-0.04em] text-slate-950 sm:text-5xl sm:leading-[0.98] md:text-7xl md:tracking-[-0.05em]">
                 <motion.span variants={fadeUp} className="inline-block">Tu salud, conectada</motion.span>{' '}
                 <motion.span variants={fadeUp} className="inline-block">con los mejores</motion.span>{' '}
@@ -257,18 +264,18 @@ export function PublicSite({ onLogin, onRegister }: PublicSiteProps) {
               </h2>
               <motion.p
                 variants={fadeUp}
-                className="mt-5 max-w-2xl text-pretty text-base leading-8 text-slate-600 sm:text-lg sm:leading-9 md:mt-7 md:text-2xl"
+                className="mx-auto mt-5 max-w-2xl text-pretty text-base leading-8 text-slate-600 sm:text-lg sm:leading-9 md:mt-7 md:text-2xl lg:mx-0"
               >
                 Agenda consultas, accede a tu historia clínica y realiza telemedicina en una experiencia pensada para convertir confianza en acción.
               </motion.p>
             </div>
 
-            <motion.div variants={fadeUp} className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4 md:mt-9">
+            <motion.div variants={fadeUp} className="mt-8 flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:flex-wrap sm:justify-center sm:gap-4 md:mt-9 lg:justify-start">
               <motion.button
                 onClick={onRegister}
                 whileHover={reduce ? undefined : { scale: 1.03 }}
                 whileTap={reduce ? undefined : { scale: 0.97 }}
-                className="group flex items-center justify-center gap-3 rounded-3xl bg-blue-600 px-7 py-4 text-base font-semibold text-white shadow-[0_22px_60px_rgba(37,99,235,0.28)] transition hover:bg-blue-700 sm:px-8 sm:py-5 sm:text-lg"
+                className="group flex items-center justify-center gap-3 rounded-3xl bg-gradient-to-r from-blue-600 to-indigo-600 px-7 py-4 text-base font-semibold text-white shadow-[0_22px_60px_rgba(37,99,235,0.30)] transition hover:from-blue-700 hover:to-indigo-700 sm:px-8 sm:py-5 sm:text-lg"
               >
                 <Calendar className="h-5 w-5" />
                 Agendar cita
@@ -285,10 +292,11 @@ export function PublicSite({ onLogin, onRegister }: PublicSiteProps) {
               </motion.button>
             </motion.div>
 
-            <motion.div variants={fadeUp} className="mt-7 flex items-start gap-3 text-sm text-slate-600 sm:text-base md:mt-8">
+            <motion.div variants={fadeUp} className="mt-7 flex max-w-md items-start justify-center gap-3 text-sm text-slate-600 sm:text-base md:mt-8 lg:justify-start">
               <CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-500" />
               Con la confianza de pacientes, médicos y aliados que buscan una atención coordinada.
             </motion.div>
+            </div>
           </div>
 
           <HeroIllustration reduce={reduce} />
@@ -417,7 +425,7 @@ export function PublicSite({ onLogin, onRegister }: PublicSiteProps) {
                     <div className="rounded-2xl bg-emerald-100 p-3 text-emerald-700">
                       <Wallet className="h-6 w-6" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-950">Beneficios por comisiones</h3>
+                    <h3 className="text-xl font-bold text-slate-950">Beneficios por Comisiones</h3>
                   </div>
                   <p className="mt-4 text-base leading-8 text-slate-600">
                     Un paciente puede generar un código de referido y un gestor puede participar en el crecimiento del sistema mediante acompañamiento y captación. Las comisiones se generan solo cuando la cita se concreta.
@@ -431,7 +439,7 @@ export function PublicSite({ onLogin, onRegister }: PublicSiteProps) {
                     <div className="rounded-2xl bg-blue-100 p-3 text-blue-700">
                       <Stethoscope className="h-6 w-6" />
                     </div>
-                    <h3 className="text-xl font-bold text-slate-950">Una experiencia coherente</h3>
+                    <h3 className="text-xl font-bold text-slate-950">Una Experiencia Coherente</h3>
                   </div>
                   <p className="mt-4 text-base leading-8 text-slate-600">
                     Empieza hoy y gestiona tu salud de forma clara, simple y en un solo lugar.
@@ -464,16 +472,16 @@ export function PublicSite({ onLogin, onRegister }: PublicSiteProps) {
               transition={{ duration: 11, repeat: Infinity, ease: 'easeInOut' }}
               className="pointer-events-none absolute -bottom-12 left-1/3 h-40 w-40 rounded-full bg-white/10"
             />
-            <div className="relative flex flex-col gap-8 lg:flex-row lg:items-center lg:justify-between">
+            <div className="relative flex flex-col items-center gap-8 text-center">
               <div className="max-w-2xl">
                 <h2 className="text-balance text-4xl font-black tracking-[-0.04em] md:text-5xl">
                   Da el primer paso hacia una atención mejor coordinada
                 </h2>
-                <p className="mt-4 text-pretty text-lg leading-8 text-blue-50">
+                <p className="mx-auto mt-4 max-w-xl text-pretty text-lg leading-8 text-blue-50">
                   Crea tu cuenta gratis y agenda tu primera consulta en minutos, sin trámites complicados.
                 </p>
               </div>
-              <div className="flex flex-col gap-3 sm:flex-row lg:shrink-0">
+              <div className="flex flex-col gap-3 sm:flex-row sm:justify-center">
                 <motion.button
                   onClick={onRegister}
                   whileHover={reduce ? undefined : { scale: 1.04 }}
@@ -547,16 +555,22 @@ function HeroIllustration({ reduce }: { reduce: boolean | null }) {
             icon={MonitorPlay}
             title="Atención conectada"
             text="Explora la experiencia completa antes de registrarte y conoce cómo será tu proceso."
+            tone="blue"
+            reduce={reduce}
           />
           <MetricCard
             icon={Wallet}
             title="Modelo transparente"
             text="La plataforma muestra valor real para pacientes, médicos y referidores cuando la cita se concreta."
+            tone="violet"
+            reduce={reduce}
           />
           <MetricCard
             icon={MessageCircle}
             title="Acompañamiento claro"
             text="Todo se presenta con continuidad visual para que navegar, entender y avanzar se sienta natural."
+            tone="cyan"
+            reduce={reduce}
           />
         </div>
       </motion.div>
@@ -626,17 +640,28 @@ function MobileNavLink({ active, children, onClick }: { active: boolean; childre
   );
 }
 
-function MetricCard({ icon: Icon, title, text }: { icon: any; title: string; text: string }) {
+const metricTones: Record<string, { chip: string; surface: string; border: string; glow: string }> = {
+  blue: { chip: 'from-blue-500 to-indigo-600', surface: 'from-white to-blue-50/60', border: 'border-blue-100/80', glow: 'hover:shadow-[0_24px_55px_rgba(37,99,235,0.16)]' },
+  violet: { chip: 'from-violet-500 to-fuchsia-600', surface: 'from-white to-fuchsia-50/50', border: 'border-violet-100/80', glow: 'hover:shadow-[0_24px_55px_rgba(139,92,246,0.16)]' },
+  cyan: { chip: 'from-cyan-500 to-blue-600', surface: 'from-white to-cyan-50/60', border: 'border-cyan-100/80', glow: 'hover:shadow-[0_24px_55px_rgba(6,182,212,0.16)]' }
+};
+
+function MetricCard({ icon: Icon, title, text, tone = 'blue', reduce }: { icon: any; title: string; text: string; tone?: string; reduce: boolean | null }) {
+  const t = metricTones[tone] || metricTones.blue;
   return (
-    <div className="flex items-start gap-4 rounded-[24px] border border-white/80 bg-white/90 p-4 shadow-[0_18px_45px_rgba(15,23,42,0.06)]">
-      <div className="inline-flex shrink-0 rounded-2xl bg-blue-50 p-3 text-blue-700">
+    <motion.div
+      whileHover={reduce ? undefined : { y: -3 }}
+      transition={{ duration: 0.3, ease: EASE }}
+      className={`group flex items-start gap-4 rounded-[24px] border ${t.border} bg-gradient-to-br ${t.surface} p-4 shadow-[0_18px_45px_rgba(15,23,42,0.06)] transition ${t.glow}`}
+    >
+      <div className={`inline-flex shrink-0 rounded-2xl bg-gradient-to-br ${t.chip} p-3 text-white shadow-[0_12px_26px_rgba(37,99,235,0.28)] ring-1 ring-white/40 transition duration-300 group-hover:scale-110`}>
         <Icon className="h-6 w-6" />
       </div>
       <div>
         <h3 className="text-[1.05rem] font-bold leading-7 text-slate-950">{title}</h3>
         <p className="mt-1 text-sm leading-7 text-slate-600">{text}</p>
       </div>
-    </div>
+    </motion.div>
   );
 }
 
@@ -828,7 +853,7 @@ function SectionHeading({
 
 function SiteFooter({ reduce }: { reduce: boolean | null }) {
   return (
-    <footer className="relative border-t border-slate-200 bg-white/70">
+    <footer className="relative bg-[linear-gradient(180deg,_transparent_0%,_rgba(255,255,255,0.5)_22%,_rgba(238,244,255,0.92)_100%)]">
       <div className="mx-auto max-w-7xl px-4 py-12 md:px-8 lg:px-10">
         <Reveal reduce={reduce}>
           <div className="grid gap-10 md:grid-cols-[1.4fr_1fr_1fr]">
@@ -867,7 +892,7 @@ function SiteFooter({ reduce }: { reduce: boolean | null }) {
           </div>
         </Reveal>
 
-        <div className="mt-10 flex flex-col gap-3 border-t border-slate-200 pt-6 text-sm text-slate-500 sm:flex-row sm:items-center sm:justify-between">
+        <div className="mt-10 flex flex-col items-center gap-2 border-t border-slate-200/70 pt-6 text-center text-sm text-slate-500">
           <span>© {new Date().getFullYear()} MediConnect. Todos los derechos reservados.</span>
           <span>Hecho para una atención médica coordinada.</span>
         </div>

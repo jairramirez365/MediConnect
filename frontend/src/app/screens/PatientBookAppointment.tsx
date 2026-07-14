@@ -344,7 +344,7 @@ export function PatientBookAppointment({
           <div className="rounded-[28px] border border-white/80 bg-white/92 p-6 shadow-[0_18px_50px_rgba(37,99,235,0.06)]">
             <div className="flex items-center justify-between gap-4">
               <div>
-                <h2 className="text-2xl font-bold text-slate-950">Horarios disponibles</h2>
+                <h2 className="text-2xl font-bold text-slate-950">Horarios Disponibles</h2>
                 <p className="mt-1 text-sm text-slate-500">Filtra por fecha y jornada para ver solo los horarios exactos que puedes reservar.</p>
               </div>
               <button

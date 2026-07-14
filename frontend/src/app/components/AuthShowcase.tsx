@@ -30,7 +30,7 @@ export function AuthShowcase({ title, description }: { title: string; descriptio
     >
       <motion.div variants={showcaseItem}>
         <div className="inline-flex items-center gap-2 rounded-full border border-blue-100 bg-white/85 px-4 py-3 text-sm font-semibold text-blue-700 shadow-sm">
-          Plataforma health-tech multirol
+          Plataforma Health-Tech Multirol
         </div>
         <h2 className="mt-7 max-w-xl text-balance text-[2.75rem] font-black leading-[1.03] tracking-[-0.045em] text-slate-950 xl:text-5xl">
           {title}
@@ -45,7 +45,7 @@ export function AuthShowcase({ title, description }: { title: string; descriptio
             {...float(0.2)}
             className="absolute -left-7 bottom-20 z-10 rounded-[24px] border border-white/80 bg-white px-5 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]"
           >
-            <h3 className="text-base font-bold text-slate-900">Proxima cita</h3>
+            <h3 className="text-base font-bold text-slate-900">Próxima cita</h3>
             <div className="mt-2 flex items-center gap-2 text-sm text-slate-500">
               <Calendar className="h-4 w-4 text-blue-600" />
               Hoy, 10:30 AM
@@ -57,7 +57,7 @@ export function AuthShowcase({ title, description }: { title: string; descriptio
             {...float(0.9, 8)}
             className="absolute -right-5 top-10 z-10 rounded-[24px] border border-white/80 bg-white px-5 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]"
           >
-            <MiniInfo icon={<FileText className="h-5 w-5 text-blue-600" />} title="Historial clinico" subtitle="Siempre accesible" />
+            <MiniInfo icon={<FileText className="h-5 w-5 text-blue-600" />} title="Historial clínico" subtitle="Siempre accesible" />
           </motion.div>
 
           <motion.div
@@ -65,7 +65,7 @@ export function AuthShowcase({ title, description }: { title: string; descriptio
             className="absolute -right-7 bottom-14 z-10 rounded-[24px] border border-white/80 bg-white px-5 py-4 shadow-[0_18px_45px_rgba(15,23,42,0.08)]"
           >
             <div className="flex items-center justify-between gap-4">
-              <MiniInfo icon={<MessageCircle className="h-5 w-5 text-blue-600" />} title="Chat medico" subtitle="Soporte y seguimiento" />
+              <MiniInfo icon={<MessageCircle className="h-5 w-5 text-blue-600" />} title="Chat médico" subtitle="Soporte y seguimiento" />
               <motion.span
                 animate={reduce ? undefined : { scale: [1, 1.35, 1], opacity: [1, 0.6, 1] }}
                 transition={{ duration: 1.8, repeat: Infinity, ease: 'easeInOut' }}
